@@ -1,8 +1,12 @@
+import argparse
 import os
 
 import h5py
 from czifile import CziFile
 from tqdm import tqdm
+
+
+CHANNELS = ["marker", "nuclei", "serum"]
 
 
 def parse_samples(input_path):
@@ -16,8 +20,7 @@ def parse_samples(input_path):
     return samples
 
 
-def import_single_images(input_path, output_folder):
-    channel_names = ["marker", "serum", "nuclei"]
+def import_single_images(input_path, output_folder, channel_names):
     samples = parse_samples(input_path)
     os.makedirs(output_folder, exist_ok=True)
     with CziFile(input_path, "r") as f:
@@ -32,7 +35,18 @@ def import_single_images(input_path, output_folder):
                 f.create_dataset(channel_names[channel], data=im, compression="gzip")
 
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path")
+    parser.add_argument("-c", "--channels", default=CHANNELS, nargs="+")
+    args = parser.parse_args()
+    path = args.path
+    root, fname = os.path.split(path)
+    root_name = os.path.basename(root)
+    fname = os.path.splitext(fname)[0]
+    output_folder = os.path.join("/home/pape/Work/data/covid-if2/imported", root_name, fname)
+    import_single_images(path, output_folder, args.channels)
+
+
 if __name__ == "__main__":
-    path = "/home/pape/Work/data/covid-if2/96well_ANA_Serum_SN_dilutions-Split-01.czi"
-    output_folder = "/home/pape/Work/data/covid-if2/processed-v1"
-    import_single_images(path, output_folder)
+    main()
