@@ -16,10 +16,10 @@ def check_sample(in_path, out_path):
     with h5py.File(out_path, "r") as f:
         if "prediction" in f:
             for name, ds in f["prediction"].items():
-                predictions["name"] = ds[:]
+                predictions[name] = ds[:]
         if "segmentation" in f:
             for name, ds in f["segmentation"].items():
-                segmentations["name"] = ds[:]
+                segmentations[name] = ds[:]
 
     v = napari.Viewer()
     v.title = os.path.basename(in_path)
