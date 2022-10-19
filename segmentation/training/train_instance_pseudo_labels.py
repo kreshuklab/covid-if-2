@@ -20,7 +20,9 @@ def get_loader(split, patch_shape, batch_size):
         file_paths = val_paths
         n_samples = 50
 
-    raw_transform = partial(torch_em.transform.raw.normalize_percentile, lower=1.0, upper=97.5)
+    raw_transform = torch_em.transform.raw.RawTransform(
+        partial(torch_em.transform.raw.normalize_percentile, lower=1.0, upper=97.5)
+    )
     label_transform = torch_em.transform.label.BoundaryTransform(add_binary_target=True)
 
     raw_key = "image"

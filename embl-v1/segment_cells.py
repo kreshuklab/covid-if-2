@@ -116,6 +116,10 @@ def add_grid_view(ds_name):
     )
 
 
+# ideas to improve segmentation
+# - use pseudo-training model
+# - subtract boundaries from fg before computing mask
+# - try second round of pseudo-labeling
 def main():
     folder_name = "markers_new"
     run_cell_segmentation(folder_name)

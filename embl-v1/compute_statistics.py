@@ -80,9 +80,9 @@ def stats_impl(position, ds_folder):
     return bg_stats
 
 
-def compute_segmentation_statistics(ds_folder, site_table):
+def compute_segmentation_statistics(ds_folder, site_table, force):
     site_stat_table = os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv")
-    if os.path.exists(site_stat_table):
+    if os.path.exists(site_stat_table) and not force:
         return
 
     n_workers = 32
@@ -105,9 +105,9 @@ def compute_segmentation_statistics(ds_folder, site_table):
     bg_stats.to_csv(site_stat_table, sep="\t", index=False)
 
 
-def compute_site_statistics(ds_folder, site_table):
+def compute_site_statistics(ds_folder, site_table, force):
     site_stat_table = os.path.join(ds_folder, "tables", "sites", "statistics.tsv")
-    if os.path.exists(site_stat_table):
+    if os.path.exists(site_stat_table) and not force:
         return
 
     channel_names = list(CHANNEL_ORDER.values())
@@ -132,30 +132,30 @@ def compute_site_statistics(ds_folder, site_table):
 
 
 # currently we don't need the well level stats
-def compute_well_statistics(ds_folder, site_table):
+def compute_well_statistics(ds_folder, site_table, force):
     pass
     # well_stat_table = os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv")
 
 
-def compute_statistics(ds_folder):
+def compute_statistics(ds_folder, force=False):
     well_table_folder = os.path.join(ds_folder, "tables", "wells")
     well_table = pd.read_csv(os.path.join(well_table_folder, "default.tsv"), sep="\t")
 
     site_table_folder = os.path.join(ds_folder, "tables", "sites")
     site_table = pd.read_csv(os.path.join(site_table_folder, "default.tsv"), sep="\t")
 
-    compute_segmentation_statistics(ds_folder, site_table)
+    compute_segmentation_statistics(ds_folder, site_table, force)
 
     # implement the agglomerations over the cell statistic per site and well here,
     # (will be helpful in general esp. for QC, but we don't need it right now)
-    compute_site_statistics(ds_folder, site_table)
-    compute_well_statistics(ds_folder, well_table)
+    compute_site_statistics(ds_folder, site_table, force)
+    compute_well_statistics(ds_folder, well_table, force)
 
 
 def main():
     ds_name = "markers_new"
     ds_folder = os.path.join(OUTPUT_ROOT, ds_name)
-    compute_statistics(ds_folder)
+    compute_statistics(ds_folder, force=True)
 
 
 if __name__ == "__main__":
