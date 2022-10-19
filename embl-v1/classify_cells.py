@@ -1,0 +1,145 @@
+import os
+from glob import glob
+
+import numpy as np
+import pandas as pd
+import torch
+import zarr
+
+from skimage.transform import resize
+from tqdm import tqdm
+from torchvision.models.resnet import resnet18
+
+
+CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
+                          "classification_v1_augmentations")
+OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+
+
+def load_model():
+    device = torch.device("cuda")
+    model = resnet18(num_classes=5)
+    model_state = torch.load(os.path.join(CHECKPOINT, "best_model.pt"))
+    model.load_state_dict(model_state)
+    model.eval()
+    model.to(device)
+    return model
+
+
+def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path):
+    eps = 1e-7
+    classes = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Lamin", "mScarlet-Giantin"]
+    device = torch.device("cuda")
+
+    with zarr.open(marker_path, "r") as f:
+        markers = f["s0"][:]
+    with zarr.open(nuclei_path, "r") as f:
+        nuclei = f["s0"][:]
+    with zarr.open(seg_path, "r") as f:
+        seg = f["s0"][:]
+
+    cell_table = pd.read_csv(table_path, sep="\t")
+
+    patch_shape = (152, 152)
+
+    class_predictions = {}
+    label_ids = []
+    patches = []
+
+    def _preprocess(data, normalize=True):
+        data = resize(data, patch_shape, preserve_range=True)
+        data = data.astype("float32")
+        if normalize:
+            p_dn, p_up = data.min(), data.max()
+            data = (data.astype("float32") - p_dn) / (p_up - p_dn + eps)
+        return data[None]
+
+    for _, row in cell_table.iterrows():
+        label_id = row.label_id
+        # we skip the cells that are not stained
+        if not row.is_stained:
+            class_predictions[label_id] = "not-classified"
+        bb = np.s_[
+            int(row.bb_min_y):int(row.bb_max_y),
+            int(row.bb_min_x):int(row.bb_max_x)
+        ]
+
+        patch = np.concatenate([
+            _preprocess(markers[bb]),
+            _preprocess(nuclei[bb]),
+            _preprocess(seg[bb] == label_id, normalize=False)
+        ], axis=0)
+        assert patch.shape == (3,) + patch_shape
+
+        label_ids.append(label_id)
+        patches.append(patch)
+
+    patches = np.array(patches)
+    assert patches.ndim == 4
+    # can we do this without OOM ?
+    # batch_size = 256
+    with torch.no_grad():
+        input_ = torch.from_numpy(patches).to(device)
+        predictions = model(input_)
+        predictions = predictions.max(1)[1].cpu().numpy()
+
+    assert len(predictions) == len(label_ids)
+    class_predictions.update({label_id: classes[class_id] for label_id, class_id in zip(label_ids, predictions)})
+    class_predictions = dict(sorted(class_predictions.items()))
+    assert len(class_predictions) == len(cell_table)
+    cell_table = cell_table.sort_values("label_id")
+    cell_table["prediction"] = list(class_predictions.values())
+    cell_table.to_csv(table_path, sep="\t", index=False)
+
+
+def set_to_non_classified(table_path):
+    tab = pd.read_csv(table_path, sep="\t")
+    tab["prediction"] = "not-classified"
+    tab.to_csv(table_path, sep="\t", index=False)
+
+
+def classify_cells(folder_name):
+    ds_folder = os.path.join(OUTPUT_ROOT, folder_name)
+    model = load_model()
+
+    marker_paths = glob(os.path.join(ds_folder, "images", "ome-zarr", "*marker*"))
+    marker_paths.sort()
+    nuclei_paths = glob(os.path.join(ds_folder, "images", "ome-zarr", "*nuclei*"))
+    nuclei_paths.sort()
+    cell_seg_paths = glob(os.path.join(ds_folder, "images", "ome-zarr", "*cell-segmentation*"))
+    cell_seg_paths.sort()
+    cell_table_paths = glob(os.path.join(ds_folder, "tables", "*cell-segmentation*"))
+    cell_table_paths.sort()
+
+    site_table = pd.read_csv(
+        os.path.join(ds_folder, "tables", "sites", "default.tsv"), sep="\t"
+    )
+
+    for mp, nup, cp, ct in tqdm(zip(marker_paths, nuclei_paths, cell_seg_paths, cell_table_paths),
+                                total=len(marker_paths)):
+
+        table_path = os.path.join(ct, "default.tsv")
+
+        # we skip all positions that were used either as training or as validation data
+        position = os.path.basename(mp)[:-len(".ome.zarr")].split("_")[1]
+        pattern = site_table[site_table["position"] == position]["pattern"]
+        assert len(pattern) == 1
+        pattern = pattern.values[0]
+        if pattern != "Markers_mixed":
+            idx = int(position[1:]) - 1
+            idx_in_well = idx % 9
+            if idx_in_well < 7:
+                # set all cells to non-classified
+                set_to_non_classified(table_path)
+                continue
+
+        classify_cells_image(model, mp, nup, cp, table_path)
+
+
+def main():
+    folder_name = "markers_new"
+    classify_cells(folder_name)
+
+
+if __name__ == "__main__":
+    main()

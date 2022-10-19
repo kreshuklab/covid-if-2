@@ -30,6 +30,8 @@ def evaluate_model(checkpoint):
     with torch.no_grad():
         model = resnet18(num_classes=num_classes)
         model_state = torch.load(os.path.join(checkpoint, "best.pt"))["model_state"]
+        # save the state dict so we can more easily reload it
+        torch.save(model_state, os.path.join(checkpoint, "best_model.pt"))
         model.load_state_dict(model_state)
         model.eval()
         model.to(device)
