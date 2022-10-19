@@ -1,11 +1,12 @@
 import os
 from glob import glob
+from functools import partial
 
 import torch
 import torch_em
 from torch_em.model import UNet2d
 
-ROOT = ""
+ROOT = "/scratch/pape/covid-if-2/training_data/segmentation/pseudo-labels-v1"
 
 
 def get_loader(split, patch_shape, batch_size):
@@ -19,6 +20,9 @@ def get_loader(split, patch_shape, batch_size):
         file_paths = val_paths
         n_samples = 50
 
+    raw_transform = torch_em.transform.raw.RawTransform(
+        partial(torch_em.transform.raw.normalize_percentile, lower=1.0, upper=97.5)
+    )
     label_transform = torch_em.transform.label.BoundaryTransform(add_binary_target=True)
 
     raw_key = "image"
@@ -27,6 +31,7 @@ def get_loader(split, patch_shape, batch_size):
         file_paths, raw_key,
         file_paths, label_key,
         patch_shape=patch_shape, batch_size=batch_size,
+        raw_transform=raw_transform,
         label_transform=label_transform,
         num_workers=8,
         n_samples=n_samples,
@@ -57,6 +62,7 @@ def train_boundaries(args):
 
 
 if __name__ == "__main__":
-    parser = torch_em.util.parser_helper(default_batch_size=8)
+    parser = torch_em.util.parser_helper(default_batch_size=4,
+                                         require_input=False)
     args = parser.parse_args()
     train_boundaries(args)
