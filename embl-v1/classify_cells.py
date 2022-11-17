@@ -199,13 +199,17 @@ def analyze_classification(folder_name):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
+    parser.add_argument("--c", "--classify", type=int, default=1)
     args = parser.parse_args()
 
     plate_config = read_plate_config(args.config_file)
     folder_name = os.path.basename(plate_config.folder).lower()
 
-    # filter_function = FILTER_FUNCTIONS.get(plate_config.prediction_filter_name, no_filter)
-    # classify_cells(folder_name, filter_function=filter_function)
+    if bool(args.classify):
+        filter_function = FILTER_FUNCTIONS.get(
+            plate_config.prediction_filter_name, no_filter
+        )
+        classify_cells(folder_name, filter_function=filter_function)
     analyze_classification(folder_name)
 
 
