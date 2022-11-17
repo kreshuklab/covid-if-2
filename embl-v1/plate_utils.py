@@ -1,7 +1,24 @@
+import json
 import string
 
-# TODO read channel order from file
-CHANNEL_ORDER = {0: "marker", 1: "nuclei", 2: "serum"}
+CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Lamin", "mScarlet-Giantin"]
+
+
+# could be a data class
+class PlateConfig:
+    def __init__(self, path):
+        with open(path, "r") as f:
+            plate_config = json.load(f)
+        self.folder = plate_config["folder"]
+        self.nested = plate_config["nested"]
+        channel_order = {int(k): v for k, v in plate_config["channel_order"].items()}
+        self.channel_order = channel_order
+        self.channel_colors = plate_config["channel_colors"]
+        self.prediction_filter_name = plate_config["prediction_filter_name"]
+
+
+def read_plate_config(path):
+    return PlateConfig(path)
 
 
 def to_site_name(source_name, prefix):

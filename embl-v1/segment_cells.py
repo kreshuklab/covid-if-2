@@ -1,3 +1,4 @@
+import argparse
 import os
 from glob import glob
 
@@ -12,7 +13,7 @@ from scipy.ndimage.morphology import binary_dilation
 from tqdm import tqdm
 from xarray import DataArray
 
-from plate_utils import to_site_name, to_well_name, to_position, CHANNEL_ORDER
+from plate_utils import to_site_name, to_well_name, to_position, read_plate_config
 
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 
@@ -48,6 +49,7 @@ def segment_cells(model, serum_path, nucleus_path):
 
 def run_cell_segmentation(ds_name):
     ds_folder = os.path.join(OUTPUT_ROOT, ds_name)
+    assert os.path.exists(ds_folder), ds_folder
     sources = mobie.metadata.read_dataset_metadata(ds_folder)["sources"]
 
     image_folder = os.path.join(ds_folder, "images", "ome-zarr")
@@ -61,7 +63,9 @@ def run_cell_segmentation(ds_name):
     chunks = (1024, 1024)
     scale_factors = [[2, 2], [2, 2]]
 
-    doi = "10.5281/zenodo.5847355"
+    # doi = "10.5281/zenodo.5847355"
+    # the updated model:
+    doi = "/scratch/pape/covid-if-2/networks/segmentation/instance-pseudo-labels/instance-pseudo-labels.zip"
     model = None
 
     for serum, nuc in tqdm(zip(serum_paths, nucleus_paths), total=len(serum_paths), desc="Run cell segmentation"):
@@ -83,10 +87,10 @@ def run_cell_segmentation(ds_name):
                                unit="pixel", file_format="ome.zarr", max_jobs=8)
 
 
-def add_grid_view(ds_name):
+def add_grid_view(ds_name, channel_order, channel_colors):
     ds_folder = os.path.join(OUTPUT_ROOT, ds_name)
 
-    source_prefixes = list(CHANNEL_ORDER.values())
+    source_prefixes = list(channel_order.values())
     seg_prefixes = ["nucleus-segmentation", "cell-segmentation"]
 
     contrast_limits = {
@@ -96,9 +100,8 @@ def add_grid_view(ds_name):
         for name in source_prefixes
     }
 
-    colors = {"nuclei": "blue", "serum": "green", "marker": "red"}
     source_settings = [
-        {"color": colors[name], "contrastLimits": contrast_limits[name], "visible": True}
+        {"color": channel_colors[name], "contrastLimits": contrast_limits[name], "visible": True}
         for name in source_prefixes
     ] + [
         {"lut": "glasbey", "visible": False, "opacity": 0.5},
@@ -106,7 +109,7 @@ def add_grid_view(ds_name):
     ]
 
     source_prefixes += seg_prefixes
-    source_types = len(CHANNEL_ORDER) * ["image"] + 2 * ["segmentation"]
+    source_types = len(channel_order) * ["image"] + 2 * ["segmentation"]
     htm.add_plate_grid_view(
         ds_folder, view_name="segmentations", source_prefixes=source_prefixes, source_types=source_types,
         source_settings=source_settings, source_name_to_site_name=to_site_name,
@@ -121,9 +124,13 @@ def add_grid_view(ds_name):
 # - subtract boundaries from fg before computing mask
 # - try second round of pseudo-labeling
 def main():
-    folder_name = "markers_new"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
+    args = parser.parse_args()
+    plate_config = read_plate_config(args.config_file)
+    folder_name = os.path.basename(plate_config.folder).lower()
     run_cell_segmentation(folder_name)
-    add_grid_view(folder_name)
+    add_grid_view(folder_name, plate_config.channel_order, plate_config.channel_colors)
 
 
 if __name__ == "__main__":

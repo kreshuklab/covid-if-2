@@ -1,7 +1,10 @@
+import argparse
 import os
 
 import numpy as np
 import pandas as pd
+
+from plate_utils import read_plate_config
 
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 SHAPE = (3008, 4096)
@@ -80,7 +83,12 @@ def find_stained_cells(ds_name):
 
 
 def main():
-    find_stained_cells("markers_new")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
+    args = parser.parse_args()
+    plate_config = read_plate_config(args.config_file)
+    folder_name = os.path.basename(plate_config.folder).lower()
+    find_stained_cells(folder_name)
 
 
 if __name__ == "__main__":

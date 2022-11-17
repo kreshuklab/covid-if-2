@@ -1,0 +1,7 @@
+{
+    "folder": "Markers_New",
+    "nested": true,
+    "channel_order": {"0": "marker", "1": "nuclei", "2": "serum"},
+    "channel_colors": {"nuclei": "blue", "serum": "green", "marker": "red"},
+    "prediction_filter_name": "training_plate_filter" 
+}

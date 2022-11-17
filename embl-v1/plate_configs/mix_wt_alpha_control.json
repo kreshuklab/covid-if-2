@@ -1,0 +1,7 @@
+{
+    "folder": "EMBL_images/Mix_wt_alpha_control",
+    "nested": false,
+    "channel_order": {"0": "nuclei", "1": "serum", "2": "marker", "3": "spike"},
+    "channel_colors": {"nuclei": "blue", "serum": "green", "marker": "red", "spike": "violet"},
+    "prediction_filter_name": null
+}

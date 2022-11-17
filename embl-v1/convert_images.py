@@ -1,3 +1,4 @@
+import argparse
 import os
 from glob import glob
 
@@ -9,13 +10,13 @@ import pandas as pd
 from czifile import CziFile
 from tqdm import tqdm
 
-from plate_utils import to_site_name, to_well_name, to_position, CHANNEL_ORDER
+from plate_utils import to_site_name, to_well_name, to_position, read_plate_config
 
 INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 
 
-def read_czi(path):
+def read_czi(path, channel_order):
     data = {}
     samples = []
     with CziFile(path, "r") as f:
@@ -25,12 +26,12 @@ def read_czi(path):
             samples.append(sample)
             data[channel] = block.data().squeeze()
     assert len(set(samples)) == 1
-    assert len(data) == 3
-    data = np.concatenate([data[channel][None] for channel in CHANNEL_ORDER], axis=0)
+    assert len(data) == len(channel_order)
+    data = np.concatenate([data[channel][None] for channel in channel_order], axis=0)
     return data
 
 
-def convert_images(in_folder, ds_folder, pos_to_pattern):
+def convert_images(in_folder, ds_folder, pos_to_pattern, channel_order):
     sources = mobie.metadata.read_dataset_metadata(ds_folder).get("sources", {})
 
     ds_name = os.path.basename(ds_folder)
@@ -49,10 +50,10 @@ def convert_images(in_folder, ds_folder, pos_to_pattern):
         pos_to_pattern[pos] = pattern_name
         # breakpoint()
         # print(pos, fname, pattern_name)
-        if all(f"{channel_name}_{pos}" in sources for channel_name in CHANNEL_ORDER.values()):
+        if all(f"{channel_name}_{pos}" in sources for channel_name in channel_order.values()):
             continue
-        image_data = read_czi(image_path)
-        for channel, channel_name in CHANNEL_ORDER.items():
+        image_data = read_czi(image_path, channel_order)
+        for channel, channel_name in channel_order.items():
             source_name = f"{channel_name}_{pos}"
             tmp_folder = f"tmps/tmp_{source_name}"
             mobie.add_image(image_data[channel], None, out_root, ds_name, source_name,
@@ -79,6 +80,7 @@ def get_tables(pos_to_pattern, table_root):
         "region_id": region_ids, "pattern": patterns, "position": positions
     })
     site_table_path = os.path.join(table_root, "sites", "default.tsv")
+    os.makedirs(os.path.join(table_root, "sites"), exist_ok=True)
     site_table = site_table.sort_values("region_id")
     site_table.to_csv(site_table_path, sep="\t", index=False)
 
@@ -96,15 +98,16 @@ def get_tables(pos_to_pattern, table_root):
     })
     well_table_path = os.path.join(table_root, "wells", "default.tsv")
     well_table = well_table.sort_values("region_id")
+    os.makedirs(os.path.join(table_root, "wells"), exist_ok=True)
     well_table.to_csv(well_table_path, sep="\t", index=False)
 
     return site_table, well_table
 
 
-def add_grid_view(ds_folder, site_table, well_table):
+def add_grid_view(ds_folder, site_table, well_table, channel_order, channel_colors):
 
-    source_prefixes = list(CHANNEL_ORDER.values())
-    source_types = len(CHANNEL_ORDER) * ["image"]
+    source_prefixes = list(channel_order.values())
+    source_types = len(channel_order) * ["image"]
 
     contrast_limits = {
         name: htm.compute_contrast_limits(
@@ -113,9 +116,8 @@ def add_grid_view(ds_folder, site_table, well_table):
         for name in source_prefixes
     }
     # contrast_limits = {name: [0, 0] for name in source_prefixes}
-    colors = {"nuclei": "blue", "serum": "green", "marker": "red"}
     source_settings = [
-        {"color": colors[name], "contrastLimits": contrast_limits[name], "visible": True}
+        {"color": channel_colors[name], "contrastLimits": contrast_limits[name], "visible": True}
         for name in source_prefixes
     ]
 
@@ -128,29 +130,57 @@ def add_grid_view(ds_folder, site_table, well_table):
     )
 
 
-def convert_to_mobie(folder_name):
-    in_root = os.path.join(INPUT_ROOT, folder_name)
+def convert_to_mobie_nested(plate_config):
+    in_root = os.path.join(INPUT_ROOT, plate_config.folder)
 
     if not mobie.metadata.project_exists(OUTPUT_ROOT):
         mobie.metadata.create_project_metadata(OUTPUT_ROOT)
 
     pos_to_pattern = {}
-    ds_folder = os.path.join(OUTPUT_ROOT, folder_name.lower())
+    ds_folder = os.path.join(
+        OUTPUT_ROOT,
+        os.path.basename(plate_config.folder).lower()
+    )
     input_folders = glob(os.path.join(in_root, "*"))
     for in_folder in input_folders:
         if not os.path.isdir(in_folder):
             assert False, in_folder
-        pos_to_pattern = convert_images(in_folder, ds_folder, pos_to_pattern)
+        pos_to_pattern = convert_images(in_folder, ds_folder, pos_to_pattern, plate_config.channel_order)
 
     site_table, well_table = get_tables(pos_to_pattern, os.path.join(ds_folder, "tables"))
-    add_grid_view(ds_folder, site_table, well_table)
+    add_grid_view(ds_folder, site_table, well_table, plate_config.channel_order, plate_config.channel_colors)
+
+    mobie.metadata.set_is2d(ds_folder, True)
+
+
+def convert_to_mobie(plate_config):
+    in_folder = os.path.join(INPUT_ROOT, plate_config.folder)
+
+    if not mobie.metadata.project_exists(OUTPUT_ROOT):
+        mobie.metadata.create_project_metadata(OUTPUT_ROOT)
+
+    ds_folder = os.path.join(
+        OUTPUT_ROOT, os.path.basename(plate_config.folder).lower()
+    )
+    pos_to_pattern = convert_images(in_folder, ds_folder,
+                                    pos_to_pattern={},
+                                    channel_order=plate_config.channel_order)
+
+    site_table, well_table = get_tables(pos_to_pattern, os.path.join(ds_folder, "tables"))
+    add_grid_view(ds_folder, site_table, well_table, plate_config.channel_order, plate_config.channel_colors)
 
     mobie.metadata.set_is2d(ds_folder, True)
 
 
 def main():
-    folder_name = "Markers_New"
-    convert_to_mobie(folder_name)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
+    args = parser.parse_args()
+    plate_config = read_plate_config(args.config_file)
+    if plate_config.nested:
+        convert_to_mobie_nested(plate_config)
+    else:
+        convert_to_mobie(plate_config)
 
 
 if __name__ == "__main__":

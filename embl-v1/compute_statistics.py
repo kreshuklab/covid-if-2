@@ -1,3 +1,4 @@
+import argparse
 import os
 from concurrent import futures
 from functools import partial
@@ -7,7 +8,7 @@ import pandas as pd
 from elf.io import open_file
 from tqdm import tqdm
 
-from plate_utils import to_well_name, CHANNEL_ORDER
+from plate_utils import to_well_name, read_plate_config
 
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 
@@ -54,9 +55,9 @@ def compute_stats(ds_folder, position, seg_name, channel_names):
     return table
 
 
-def stats_impl(position, ds_folder):
+def stats_impl(position, ds_folder, channel_order):
     pos_name = position.capitalize()
-    channel_names = list(CHANNEL_ORDER.values())
+    channel_names = list(channel_order.values())
     reference_segmentation = "cell-segmentation"
     segmentation_names = ["nucleus-segmentation", "cell-segmentation"]
 
@@ -80,14 +81,14 @@ def stats_impl(position, ds_folder):
     return bg_stats
 
 
-def compute_segmentation_statistics(ds_folder, site_table, force):
+def compute_segmentation_statistics(ds_folder, site_table, channel_order, force):
     site_stat_table = os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv")
     if os.path.exists(site_stat_table) and not force:
         return
 
     n_workers = 32
     positions = site_table["position"].values
-    compute_stats = partial(stats_impl, ds_folder=ds_folder)
+    compute_stats = partial(stats_impl, ds_folder=ds_folder, channel_order=channel_order)
 
     # for debugging
     # bg_stats = compute_stats(positions[0])
@@ -105,12 +106,12 @@ def compute_segmentation_statistics(ds_folder, site_table, force):
     bg_stats.to_csv(site_stat_table, sep="\t", index=False)
 
 
-def compute_site_statistics(ds_folder, site_table, force):
+def compute_site_statistics(ds_folder, site_table, channel_order, force):
     site_stat_table = os.path.join(ds_folder, "tables", "sites", "statistics.tsv")
     if os.path.exists(site_stat_table) and not force:
         return
 
-    channel_names = list(CHANNEL_ORDER.values())
+    channel_names = list(channel_order.values())
     region_ids = site_table["region_id"].values
     positions = site_table["position"].values
 
@@ -137,25 +138,30 @@ def compute_well_statistics(ds_folder, site_table, force):
     # well_stat_table = os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv")
 
 
-def compute_statistics(ds_folder, force=False):
+def compute_statistics(ds_folder, channel_order, force=False):
     well_table_folder = os.path.join(ds_folder, "tables", "wells")
     well_table = pd.read_csv(os.path.join(well_table_folder, "default.tsv"), sep="\t")
 
     site_table_folder = os.path.join(ds_folder, "tables", "sites")
     site_table = pd.read_csv(os.path.join(site_table_folder, "default.tsv"), sep="\t")
 
-    compute_segmentation_statistics(ds_folder, site_table, force)
+    compute_segmentation_statistics(ds_folder, site_table, channel_order, force)
 
     # implement the agglomerations over the cell statistic per site and well here,
     # (will be helpful in general esp. for QC, but we don't need it right now)
-    compute_site_statistics(ds_folder, site_table, force)
+    compute_site_statistics(ds_folder, site_table, channel_order, force)
     compute_well_statistics(ds_folder, well_table, force)
 
 
 def main():
-    ds_name = "markers_new"
-    ds_folder = os.path.join(OUTPUT_ROOT, ds_name)
-    compute_statistics(ds_folder, force=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
+    args = parser.parse_args()
+    plate_config = read_plate_config(args.config_file)
+    folder_name = os.path.basename(plate_config.folder).lower()
+
+    ds_folder = os.path.join(OUTPUT_ROOT, folder_name)
+    compute_statistics(ds_folder, plate_config.channel_order, force=True)
 
 
 if __name__ == "__main__":

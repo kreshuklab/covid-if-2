@@ -1,3 +1,4 @@
+import argparse
 import os
 from glob import glob
 
@@ -6,6 +7,8 @@ import z5py
 from csbdeep.utils import normalize
 from stardist.models import StarDist2D
 from tqdm import tqdm
+
+from plate_utils import read_plate_config
 
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 
@@ -21,6 +24,7 @@ def segment_nuclei(model, path):
 
 def run_nucleus_segmentation(ds_name):
     ds_folder = os.path.join(OUTPUT_ROOT, ds_name)
+    assert os.path.exists(ds_folder), ds_folder
     sources = mobie.metadata.read_dataset_metadata(ds_folder)["sources"]
 
     image_folder = os.path.join(ds_folder, "images", "ome-zarr")
@@ -50,7 +54,11 @@ def run_nucleus_segmentation(ds_name):
 
 
 def main():
-    folder_name = "markers_new"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
+    args = parser.parse_args()
+    plate_config = read_plate_config(args.config_file)
+    folder_name = os.path.basename(plate_config.folder).lower()
     run_nucleus_segmentation(folder_name)
 
 

@@ -1,3 +1,4 @@
+import argparse
 import os
 from glob import glob
 
@@ -10,15 +11,33 @@ from skimage.transform import resize
 from tqdm import tqdm
 from torchvision.models.resnet import resnet18
 
+from plate_utils import read_plate_config, to_well_name, to_site_name, CLASSES
+
 
 CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
                           "classification_v1_augmentations")
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 
 
+def no_filter(position, pattern):
+    return True
+
+
+def training_plate_filter(position, pattern):
+    if pattern != "Markers_mixed":
+        idx = int(position[1:]) - 1
+        idx_in_well = idx % 9
+        if idx_in_well < 7:
+            return True
+    return False
+
+
+FILTER_FUNCTIONS = {"no_filter": no_filter, "training_plate_filter": training_plate_filter}
+
+
 def load_model():
     device = torch.device("cuda")
-    model = resnet18(num_classes=5)
+    model = resnet18(num_classes=len(CLASSES))
     model_state = torch.load(os.path.join(CHECKPOINT, "best_model.pt"))
     model.load_state_dict(model_state)
     model.eval()
@@ -28,7 +47,6 @@ def load_model():
 
 def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path):
     eps = 1e-7
-    classes = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Lamin", "mScarlet-Giantin"]
     device = torch.device("cuda")
 
     with zarr.open(marker_path, "r") as f:
@@ -84,7 +102,7 @@ def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path):
         predictions = predictions.max(1)[1].cpu().numpy()
 
     assert len(predictions) == len(label_ids)
-    class_predictions.update({label_id: classes[class_id] for label_id, class_id in zip(label_ids, predictions)})
+    class_predictions.update({label_id: CLASSES[class_id] for label_id, class_id in zip(label_ids, predictions)})
     class_predictions = dict(sorted(class_predictions.items()))
     assert len(class_predictions) == len(cell_table)
     cell_table = cell_table.sort_values("label_id")
@@ -98,7 +116,7 @@ def set_to_non_classified(table_path):
     tab.to_csv(table_path, sep="\t", index=False)
 
 
-def classify_cells(folder_name):
+def classify_cells(folder_name, filter_function):
     ds_folder = os.path.join(OUTPUT_ROOT, folder_name)
     model = load_model()
 
@@ -125,20 +143,70 @@ def classify_cells(folder_name):
         pattern = site_table[site_table["position"] == position]["pattern"]
         assert len(pattern) == 1
         pattern = pattern.values[0]
-        if pattern != "Markers_mixed":
-            idx = int(position[1:]) - 1
-            idx_in_well = idx % 9
-            if idx_in_well < 7:
-                # set all cells to non-classified
-                set_to_non_classified(table_path)
-                continue
+
+        if not filter_function(position, pattern):
+            # set all cells to non-classified
+            set_to_non_classified(table_path)
+            continue
 
         classify_cells_image(model, mp, nup, cp, table_path)
 
 
+def analyze_classification(folder_name):
+    table_root = os.path.join(OUTPUT_ROOT, folder_name, "tables")
+    table_folders = glob(os.path.join(table_root, "*cell-segmentation*"))
+    table_folders.sort()
+
+    well_stats = {}
+
+    for table_folder in table_folders:
+        source_name = os.path.basename(table_folder)
+        site_name = to_site_name(source_name, "cell-segmentation")
+        well_name = to_well_name(site_name)
+
+        table_path = os.path.join(table_folder, "default.tsv")
+        table = pd.read_csv(table_path, sep="\t")
+
+        predicted_classes, counts = np.unique(table["prediction"].values, return_counts=True)
+        valid_predictions = np.isin(predicted_classes, CLASSES)
+        predicted_classes, counts = predicted_classes[valid_predictions], counts[valid_predictions]
+        site_stats = {cls: cnt for cls, cnt in zip(predicted_classes, counts)}
+
+        if well_name in well_stats:
+            this_stats = well_stats[well_name]
+            keys = list(set(predicted_classes).union(set(this_stats.keys())))
+            this_stats = {cls: this_stats.get(cls, 0) + site_stats.get(cls, 0) for cls in keys}
+        else:
+            this_stats = site_stats
+        well_stats[well_name] = this_stats
+
+    classification_stats = {"well": list(well_stats.keys())}
+    classification_stats.update({cls: [v.get(cls, 0) for v in well_stats.values()] for cls in CLASSES})
+    classification_stats = pd.DataFrame.from_dict(classification_stats)
+    classification_stats = classification_stats.set_index("well")
+
+    print("Classification statistics:")
+    print(classification_stats)
+    print()
+    print("Normalized classification statistics:")
+    norm = classification_stats.sum(axis=1)
+    for i in range(len(classification_stats)):
+        classification_stats.iloc[i] /= norm[i]
+    classification_stats = classification_stats.round(decimals=2)
+    print(classification_stats)
+
+
 def main():
-    folder_name = "markers_new"
-    classify_cells(folder_name)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
+    args = parser.parse_args()
+
+    plate_config = read_plate_config(args.config_file)
+    folder_name = os.path.basename(plate_config.folder).lower()
+
+    # filter_function = FILTER_FUNCTIONS.get(plate_config.prediction_filter_name, no_filter)
+    # classify_cells(folder_name, filter_function=filter_function)
+    analyze_classification(folder_name)
 
 
 if __name__ == "__main__":
