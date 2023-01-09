@@ -13,9 +13,10 @@ from scipy.ndimage.morphology import binary_dilation
 from tqdm import tqdm
 from xarray import DataArray
 
-from plate_utils import to_site_name, to_well_name, to_position, read_plate_config
+from plate_utils import to_well_name, to_position, read_plate_config
 
-OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
 
 
 def segment_cells(model, serum_path, nucleus_path):
@@ -87,7 +88,7 @@ def run_cell_segmentation(ds_name):
                                unit="pixel", file_format="ome.zarr", max_jobs=8)
 
 
-def add_grid_view(ds_name, channel_order, channel_colors):
+def add_grid_view(ds_name, channel_order, channel_colors, to_site_name):
     ds_folder = os.path.join(OUTPUT_ROOT, ds_name)
 
     source_prefixes = list(channel_order.values())
@@ -130,7 +131,7 @@ def main():
     plate_config = read_plate_config(args.config_file)
     folder_name = os.path.basename(plate_config.folder).lower()
     run_cell_segmentation(folder_name)
-    add_grid_view(folder_name, plate_config.channel_order, plate_config.channel_colors)
+    add_grid_view(folder_name, plate_config.channel_order, plate_config.channel_colors, plate_config.to_site_name)
 
 
 if __name__ == "__main__":

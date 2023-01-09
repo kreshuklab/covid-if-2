@@ -11,12 +11,17 @@ from skimage.transform import resize
 from tqdm import tqdm
 from torchvision.models.resnet import resnet18
 
-from plate_utils import read_plate_config, to_well_name, to_site_name, CLASSES
+from plate_utils import read_plate_config, to_well_name, CLASSES
 
 
+# CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
+#                           "classification_v3_resnet18_with_mask")
+# CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
+#                           "classification_v3_resnet18")
 CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
                           "classification_v1_augmentations")
-OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
 
 
 def no_filter(position, pattern):
@@ -32,20 +37,25 @@ def training_plate_filter(position, pattern):
     return False
 
 
-FILTER_FUNCTIONS = {"no_filter": no_filter, "training_plate_filter": training_plate_filter}
+FILTER_FUNCTIONS = {"no_filter": no_filter, "training_plate_filter": training_plate_filter, None: no_filter}
 
 
-def load_model():
+def load_model(checkpoint):
     device = torch.device("cuda")
     model = resnet18(num_classes=len(CLASSES))
-    model_state = torch.load(os.path.join(CHECKPOINT, "best_model.pt"))
+    model_state = torch.load(os.path.join(checkpoint, "best_model.pt"))
     model.load_state_dict(model_state)
     model.eval()
     model.to(device)
-    return model
+    with_mask = "with_mask" in checkpoint
+    if with_mask:
+        print("Run classification WITH MASK")
+    else:
+        print("Run classification WITHOUT MASK")
+    return model, with_mask
 
 
-def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path):
+def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path, with_mask):
     eps = 1e-7
     device = torch.device("cuda")
 
@@ -75,17 +85,23 @@ def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path):
     for _, row in cell_table.iterrows():
         label_id = row.label_id
         # we skip the cells that are not stained
-        if not row.is_stained:
+        if not getattr(row, "is_stained", "True"):
             class_predictions[label_id] = "not-classified"
         bb = np.s_[
             int(row.bb_min_y):int(row.bb_max_y),
             int(row.bb_min_x):int(row.bb_max_x)
         ]
 
+        mask = seg[bb] == label_id
+        this_markers = markers[bb]
+        this_nuclei = nuclei[bb]
+        if with_mask:
+            this_markers[~mask] = 0
+            this_nuclei[~mask] = 0
         patch = np.concatenate([
-            _preprocess(markers[bb]),
-            _preprocess(nuclei[bb]),
-            _preprocess(seg[bb] == label_id, normalize=False)
+            _preprocess(this_markers),
+            _preprocess(this_nuclei),
+            _preprocess(mask, normalize=False)
         ], axis=0)
         assert patch.shape == (3,) + patch_shape
 
@@ -118,7 +134,12 @@ def set_to_non_classified(table_path):
 
 def classify_cells(folder_name, filter_function):
     ds_folder = os.path.join(OUTPUT_ROOT, folder_name)
-    model = load_model()
+    model, with_mask = load_model(CHECKPOINT)
+    print("Run classification with model from", CHECKPOINT)
+    if with_mask:
+        print("with mask")
+    else:
+        print("WITHOUT mask")
 
     marker_paths = glob(os.path.join(ds_folder, "images", "ome-zarr", "*marker*"))
     marker_paths.sort()
@@ -149,10 +170,10 @@ def classify_cells(folder_name, filter_function):
             set_to_non_classified(table_path)
             continue
 
-        classify_cells_image(model, mp, nup, cp, table_path)
+        classify_cells_image(model, mp, nup, cp, table_path, with_mask)
 
 
-def analyze_classification(folder_name):
+def analyze_classification(folder_name, plate_config):
     table_root = os.path.join(OUTPUT_ROOT, folder_name, "tables")
     table_folders = glob(os.path.join(table_root, "*cell-segmentation*"))
     table_folders.sort()
@@ -161,7 +182,7 @@ def analyze_classification(folder_name):
 
     for table_folder in table_folders:
         source_name = os.path.basename(table_folder)
-        site_name = to_site_name(source_name, "cell-segmentation")
+        site_name = plate_config.to_site_name(source_name, "cell-segmentation")
         well_name = to_well_name(site_name)
 
         table_path = os.path.join(table_folder, "default.tsv")
@@ -199,18 +220,16 @@ def analyze_classification(folder_name):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
-    parser.add_argument("--c", "--classify", type=int, default=1)
+    parser.add_argument("-c", "--classify", type=int, default=1)
     args = parser.parse_args()
 
     plate_config = read_plate_config(args.config_file)
     folder_name = os.path.basename(plate_config.folder).lower()
 
     if bool(args.classify):
-        filter_function = FILTER_FUNCTIONS.get(
-            plate_config.prediction_filter_name, no_filter
-        )
+        filter_function = FILTER_FUNCTIONS[plate_config.prediction_filter_name]
         classify_cells(folder_name, filter_function=filter_function)
-    analyze_classification(folder_name)
+    analyze_classification(folder_name, plate_config)
 
 
 if __name__ == "__main__":

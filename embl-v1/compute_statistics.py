@@ -8,9 +8,10 @@ import pandas as pd
 from elf.io import open_file
 from tqdm import tqdm
 
-from plate_utils import to_well_name, read_plate_config
+from plate_utils import read_plate_config
 
-OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
 
 
 def median_absolute_deviation(x):
@@ -25,18 +26,26 @@ STATS = {
     "q05": partial(np.percentile, q=5),
     "q95": partial(np.percentile, q=95),
     "mad": median_absolute_deviation,
+    "mean": np.mean,
 }
 
 
 def compute_stats(ds_folder, position, seg_name, channel_names):
     pos_name = position.capitalize()
     seg_path = os.path.join(ds_folder, "images", "ome-zarr", f"{seg_name}_{pos_name}.ome.zarr")
+    if not os.path.exists(seg_path):
+        pos_capitalized = "-".join([pp.capitalize() for pp in pos_name.split("-")])
+        seg_path = os.path.join(ds_folder, "images", "ome-zarr", f"{seg_name}_{pos_capitalized}.ome.zarr")
+    assert os.path.exists(seg_path), seg_path
     with open_file(seg_path, "r") as f:
         seg = f["s0"][:]
 
     channels = {}
     for channel_name in channel_names:
         image_path = os.path.join(ds_folder, "images", "ome-zarr", f"{channel_name}_{pos_name}.ome.zarr")
+        if not os.path.exists(image_path):
+            pos_capitalized = "-".join([pp.capitalize() for pp in pos_name.split("-")])
+            image_path = os.path.join(ds_folder, "images", "ome-zarr", f"{seg_name}_{pos_capitalized}.ome.zarr")
         with open_file(image_path, "r") as f:
             channels[channel_name] = f["s0"][:]
 
@@ -73,9 +82,12 @@ def stats_impl(position, ds_folder, channel_order):
             bg_stats = this_bg_stats
 
         # save the table
-        table_path = os.path.join(
-            ds_folder, "tables", f"{reference_segmentation}_{pos_name}", f"statistics_{seg_name}.tsv"
-        )
+        table_folder = os.path.join(ds_folder, "tables", f"{reference_segmentation}_{pos_name}")
+        if not os.path.exists(table_folder):
+            pos_capitalized = "-".join([pp.capitalize() for pp in pos_name.split("-")])
+            table_folder = os.path.join(ds_folder, "tables", f"{reference_segmentation}_{pos_capitalized}")
+        assert os.path.exists(table_folder)
+        table_path = os.path.join(table_folder, f"statistics_{seg_name}.tsv")
         table.to_csv(table_path, sep="\t", index=False)
 
     return bg_stats
@@ -123,6 +135,10 @@ def compute_site_statistics(ds_folder, site_table, channel_order, force):
             image_path = os.path.join(
                 ds_folder, "images", "ome-zarr", f"{channel_name}_{position.capitalize()}.ome.zarr"
             )
+            if not os.path.exists(image_path):
+                pos_capitalized = "-".join([pp.capitalize() for pp in position.split("-")])
+                image_path = os.path.join(ds_folder, "images", "ome-zarr", f"{channel_name}_{pos_capitalized}.ome.zarr")
+
             with open_file(image_path, "r") as f:
                 data = f["s0"][:]
             for stat, func in STATS.items():

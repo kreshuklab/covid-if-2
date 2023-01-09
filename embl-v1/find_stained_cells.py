@@ -6,20 +6,24 @@ import pandas as pd
 
 from plate_utils import read_plate_config
 
-OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
 SHAPE = (3008, 4096)
 
 
 def find_stained_cells_image(ds_folder, position, bg_median, bg_mad):
     pos_name = position.capitalize()
-    table_path = os.path.join(
-        ds_folder, "tables", f"cell-segmentation_{pos_name}", "statistics_nucleus-segmentation.tsv"
-    )
+    table_folder = os.path.join(ds_folder, "tables", f"cell-segmentation_{pos_name}")
+    if not os.path.exists(table_folder):
+        pos_capitalized = "-".join([pp.capitalize() for pp in pos_name.split("-")])
+        table_folder = os.path.join(ds_folder, "tables", f"cell-segmentation_{pos_capitalized}")
+
+    table_path = os.path.join(table_folder, "statistics_nucleus-segmentation.tsv")
     intensity_table = pd.read_csv(table_path, sep="\t")
-    default_table_path = os.path.join(
-        ds_folder, "tables", f"cell-segmentation_{pos_name}", "default.tsv"
-    )
+
+    default_table_path = os.path.join(table_folder, "default.tsv")
     table = pd.read_csv(default_table_path, sep="\t")
+
     if len(intensity_table) != len(table):
         assert len(intensity_table) > len(table)
         intensity_table = intensity_table.iloc[

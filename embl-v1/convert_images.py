@@ -10,10 +10,11 @@ import pandas as pd
 from czifile import CziFile
 from tqdm import tqdm
 
-from plate_utils import to_site_name, to_well_name, to_position, read_plate_config
+from plate_utils import to_well_name, read_plate_config
 
 INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
-OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
 
 
 def read_czi(path, channel_order):
@@ -26,7 +27,7 @@ def read_czi(path, channel_order):
             samples.append(sample)
             data[channel] = block.data().squeeze()
     assert len(set(samples)) == 1
-    assert len(data) == len(channel_order)
+    assert len(data) == len(channel_order), f"{len(data)}, {channel_order}, {path}"
     data = np.concatenate([data[channel][None] for channel in channel_order], axis=0)
     return data
 
@@ -64,7 +65,7 @@ def convert_images(in_folder, ds_folder, pos_to_pattern, channel_order):
     return pos_to_pattern
 
 
-def get_tables(pos_to_pattern, table_root):
+def get_tables(pos_to_pattern, table_root, to_site_name):
 
     region_ids = []
     patterns = []
@@ -104,7 +105,7 @@ def get_tables(pos_to_pattern, table_root):
     return site_table, well_table
 
 
-def add_grid_view(ds_folder, site_table, well_table, channel_order, channel_colors):
+def add_grid_view(ds_folder, site_table, well_table, channel_order, channel_colors, to_site_name):
 
     source_prefixes = list(channel_order.values())
     source_types = len(channel_order) * ["image"]
@@ -123,8 +124,9 @@ def add_grid_view(ds_folder, site_table, well_table, channel_order, channel_colo
 
     htm.add_plate_grid_view(
         ds_folder, view_name="default", source_prefixes=source_prefixes, source_types=source_types,
-        source_settings=source_settings, source_name_to_site_name=to_site_name,
-        site_name_to_well_name=to_well_name, well_to_position=to_position,
+        source_settings=source_settings,
+        source_name_to_site_name=to_site_name,
+        site_name_to_well_name=to_well_name,
         site_table=site_table, well_table=well_table,
         sites_visible=False, menu_name="bookmark"
     )
@@ -147,7 +149,7 @@ def convert_to_mobie_nested(plate_config):
             assert False, in_folder
         pos_to_pattern = convert_images(in_folder, ds_folder, pos_to_pattern, plate_config.channel_order)
 
-    site_table, well_table = get_tables(pos_to_pattern, os.path.join(ds_folder, "tables"))
+    site_table, well_table = get_tables(pos_to_pattern, os.path.join(ds_folder, "tables"), plate_config.to_site_name)
     add_grid_view(ds_folder, site_table, well_table, plate_config.channel_order, plate_config.channel_colors)
 
     mobie.metadata.set_is2d(ds_folder, True)
@@ -166,8 +168,10 @@ def convert_to_mobie(plate_config):
                                     pos_to_pattern={},
                                     channel_order=plate_config.channel_order)
 
-    site_table, well_table = get_tables(pos_to_pattern, os.path.join(ds_folder, "tables"))
-    add_grid_view(ds_folder, site_table, well_table, plate_config.channel_order, plate_config.channel_colors)
+    site_table, well_table = get_tables(pos_to_pattern, os.path.join(ds_folder, "tables"), plate_config.to_site_name)
+    add_grid_view(ds_folder, site_table, well_table,
+                  plate_config.channel_order, plate_config.channel_colors,
+                  plate_config.to_site_name)
 
     mobie.metadata.set_is2d(ds_folder, True)
 
