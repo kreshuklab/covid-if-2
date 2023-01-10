@@ -8,6 +8,11 @@ CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Lamin", "
 # classes and order for the v3 models
 # CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Giantin", "mScarlet-Lamin"]
 
+INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
+
+# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
+OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
+
 
 def to_site_name(source_name, prefix):
     pos = source_name.split("_")[1]

@@ -8,10 +8,7 @@ import pandas as pd
 from elf.io import open_file
 from tqdm import tqdm
 
-from plate_utils import read_plate_config
-
-# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
-OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
+from plate_utils import read_plate_config, OUTPUT_ROOT
 
 
 def median_absolute_deviation(x):

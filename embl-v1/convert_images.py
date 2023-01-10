@@ -10,11 +10,7 @@ import pandas as pd
 from czifile import CziFile
 from tqdm import tqdm
 
-from plate_utils import to_well_name, read_plate_config
-
-INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
-# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
-OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
+from plate_utils import to_well_name, read_plate_config, INPUT_ROOT, OUTPUT_ROOT
 
 
 def read_czi(path, channel_order):
@@ -49,8 +45,6 @@ def convert_images(in_folder, ds_folder, pos_to_pattern, channel_order):
         fname = os.path.splitext(os.path.basename(image_path))[0]
         pos = fname.split("_")[-1]
         pos_to_pattern[pos] = pattern_name
-        # breakpoint()
-        # print(pos, fname, pattern_name)
         if all(f"{channel_name}_{pos}" in sources for channel_name in channel_order.values()):
             continue
         image_data = read_czi(image_path, channel_order)
@@ -157,6 +151,7 @@ def convert_to_mobie_nested(plate_config):
 
 def convert_to_mobie(plate_config):
     in_folder = os.path.join(INPUT_ROOT, plate_config.folder)
+    assert os.path.exists(in_folder), in_folder
 
     if not mobie.metadata.project_exists(OUTPUT_ROOT):
         mobie.metadata.create_project_metadata(OUTPUT_ROOT)

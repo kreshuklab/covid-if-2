@@ -116,13 +116,13 @@ def _compute_scores(well_name, well_table, plate_config):
         # mean based score measure
         mean_intensity, mean_intensity_std = _compute_intensity("serum_mean", pattern_mask)
         score_table["mean_intensity"].append(mean_intensity)
-        score_table["mean_intensity_std"].append(mean_intensity)
+        score_table["mean_intensity_std"].append(mean_intensity_std)
         score_table["score_mean"].append(mean_intensity / bg_mean_intensity)
 
         # median based score measure
         median_intensity, median_intensity_std = _compute_intensity("serum_median", pattern_mask)
         score_table["median_intensity"].append(median_intensity)
-        score_table["median_intensity_std"].append(median_intensity)
+        score_table["median_intensity_std"].append(median_intensity_std)
         score_table["score_median"].append(median_intensity / bg_median_intensity)
 
         # ratio measures

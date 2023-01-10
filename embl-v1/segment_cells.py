@@ -13,10 +13,7 @@ from scipy.ndimage.morphology import binary_dilation
 from tqdm import tqdm
 from xarray import DataArray
 
-from plate_utils import to_well_name, to_position, read_plate_config
-
-# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
-OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
+from plate_utils import to_well_name, to_position, read_plate_config, OUTPUT_ROOT
 
 
 def segment_cells(model, serum_path, nucleus_path):

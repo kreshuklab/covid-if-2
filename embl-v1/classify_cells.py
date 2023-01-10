@@ -11,7 +11,7 @@ from skimage.transform import resize
 from tqdm import tqdm
 from torchvision.models.resnet import resnet18
 
-from plate_utils import read_plate_config, to_well_name, CLASSES
+from plate_utils import read_plate_config, to_well_name, CLASSES, OUTPUT_ROOT
 
 
 # CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
@@ -20,8 +20,6 @@ from plate_utils import read_plate_config, to_well_name, CLASSES
 #                           "classification_v3_resnet18")
 CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
                           "classification_v1_augmentations")
-# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
-OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
 
 
 def no_filter(position, pattern):
@@ -85,7 +83,7 @@ def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path, 
     for _, row in cell_table.iterrows():
         label_id = row.label_id
         # we skip the cells that are not stained
-        if not getattr(row, "is_stained", "True"):
+        if not getattr(row, "is_stained", True):
             class_predictions[label_id] = "not-classified"
         bb = np.s_[
             int(row.bb_min_y):int(row.bb_max_y),
