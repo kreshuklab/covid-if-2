@@ -5,39 +5,7 @@ from glob import glob
 import numpy as np
 import pandas as pd
 
-from plate_utils import read_plate_config, to_well_name
-
-# OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
-OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
-
-
-def _qc_cell_absolute(table, patterns, column, threshold, op=np.greater, verbose=False):
-    pattern_mask = table["prediction"].isin(patterns)
-    intensity_mask = op(table[column].values, threshold)
-
-    # filter cells that are part of the current patterns (pattern_mask: True)
-    # and do not meet the intensity criterion (intensity_mask: False).
-    # Resulting in the following assignment table (pm = pattern_mask, im = intensity_mask)
-    # pm | im -> ASS
-    #  0 |  0 -> 1
-    #  0 |  1 -> 1
-    #  1 |  0 -> 0
-    #  1 |  1 -> 1
-    mask = ~(pattern_mask & ~intensity_mask)
-    table = table[mask]
-
-    if verbose:
-        print((mask).sum(), "/", len(mask), "cells meet threshold", threshold, "in", column)
-        filtered_pattern_mask = table["prediction"].isin(patterns)
-        print(filtered_pattern_mask.sum(), "cells of patterns", patterns, "are left")
-
-    return table
-
-
-def _qc_cell_percentile(table, patterns, column, threshold, op=np.greater, verbose=False):
-    pattern_mask = table["prediction"].isin(patterns)
-    absolute_threshold = np.percentile(table[column].values[pattern_mask], threshold)
-    return _qc_cell_absolute(table, patterns, column, absolute_threshold, op=op, verbose=verbose)
+from plate_utils import read_plate_config, to_well_name, OUTPUT_ROOT
 
 
 def _compute_scores(well_name, well_table, plate_config):
@@ -49,37 +17,9 @@ def _compute_scores(well_name, well_table, plate_config):
     assert untagged_patterns is not None
     patterns = spike_patterns + nc_patterns + untagged_patterns
 
-    #
-    # perform quality control for the cells:
-    #
-    verbose = False
-    if verbose:
-        print("QC for well:", well_name)
-
-    # 1.) only keep top 75% of spike expressing cells
-    well_table = _qc_cell_percentile(well_table, spike_patterns, "spike_median", threshold=25, verbose=verbose)
-
-    # 2.) only keep top 75% of nucleocapsid expressing cells
-    well_table = _qc_cell_percentile(well_table, nc_patterns, "spike_median", threshold=25, verbose=verbose)
-
-    # 3.) filter background cells that have express any spike pattern
-    well_table = _qc_cell_absolute(well_table, untagged_patterns, "spike_median", threshold=300, op=np.less,
-                                   verbose=verbose)
-
-    # 4.) filter cells based on the marker expressions for each individual pattern,
-    # with empirically determined threshold values
-    well_table = _qc_cell_absolute(well_table, ["LCK-mScarlet"], "marker_median", threshold=200,
-                                   verbose=verbose)
-    well_table = _qc_cell_absolute(well_table, ["mScarlet-H2A"], "marker_median_nucleus", threshold=450,
-                                   verbose=verbose)
-    well_table = _qc_cell_absolute(well_table, ["3xNLS-mScarlet"], "marker_median_nucleus", threshold=500,
-                                   verbose=verbose)
-    well_table = _qc_cell_absolute(well_table, ["mScarlet-Lamin"], "marker_median_nucleus", threshold=250,
-                                   verbose=verbose)
-    # mScarlet-Giantin is not thresholded
-
-    if verbose:
-        print()
+    # only keep the cell that have passed QC
+    qc_passed = well_table["qc_passed"]
+    well_table = well_table[qc_passed]
 
     # for now, we don't do any background subtraction
     # bg_serum = 0.0
@@ -187,16 +127,10 @@ def compute_scores(plate_config):
         cell_table = pd.read_csv(os.path.join(table_folder, "statistics_cell-segmentation.tsv"), sep="\t")
         assert (default_table["label_id"] == cell_table["label_id"]).all()
 
-        nucleus_table = pd.read_csv(os.path.join(table_folder, "statistics_nucleus-segmentation.tsv"), sep="\t")
-        assert (default_table["label_id"] == cell_table["label_id"]).all()
-
         this_table = pd.concat(
             [
-                default_table[["prediction"]],
-                cell_table[["serum_median", "spike_median", "marker_median", "serum_mean"]],
-                nucleus_table[["marker_median"]].rename(
-                    columns={"marker_median": "marker_median_nucleus"}
-                )
+                default_table[["prediction", "qc_passed"]],
+                cell_table[["serum_median", "serum_mean", "spike_median"]],
             ], axis=1
         )
 

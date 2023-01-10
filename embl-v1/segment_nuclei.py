@@ -3,6 +3,8 @@ import os
 from glob import glob
 
 import mobie
+import numpy as np
+import vigra
 import z5py
 from csbdeep.utils import normalize
 from stardist.models import StarDist2D
@@ -17,6 +19,14 @@ def segment_nuclei(model, path):
     input_ = normalize(image, 1.0, 99.8)
     scale = 1  # maybe try other scales
     nuclei, _ = model.predict_instances(input_, scale=scale)
+
+    # TODO determine from data
+    min_nucleus_size = 150
+    nucleus_ids, nucleus_sizes = np.unique(nuclei, return_counts=True)
+    remove_ids = nucleus_ids[nucleus_sizes < min_nucleus_size]
+    nuclei[np.isin(nuclei, remove_ids)] = 0
+
+    nuclei, _, _ = vigra.analysis.relabelConsecutive(nuclei.astype("uint32"))
     return nuclei
 
 

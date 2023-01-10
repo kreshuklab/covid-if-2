@@ -29,14 +29,8 @@ def segment_cells(model, serum_path, nucleus_path):
     with z5py.File(nucleus_path, "r") as f:
         seeds = f["s0"][:]
 
-    # TODO determine from data
-    min_seed_size = 150
-    seed_ids, seed_sizes = np.unique(seeds, return_counts=True)
-    remove_seeds = seed_ids[seed_sizes < min_seed_size]
-    seeds[np.isin(seeds, remove_seeds)] = 0
-
     threshold = 0.5
-    seed_dilation = 5
+    seed_dilation = 6
     mask = foreground > threshold
     seed_mask = binary_dilation(seeds, iterations=seed_dilation)
     mask = np.logical_or(mask, seed_mask)

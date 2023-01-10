@@ -46,6 +46,7 @@ def load_model(checkpoint):
     model.eval()
     model.to(device)
     with_mask = "with_mask" in checkpoint
+    print("Run classification with model from", CHECKPOINT)
     if with_mask:
         print("Run classification WITH MASK")
     else:
@@ -133,11 +134,6 @@ def set_to_non_classified(table_path):
 def classify_cells(folder_name, filter_function):
     ds_folder = os.path.join(OUTPUT_ROOT, folder_name)
     model, with_mask = load_model(CHECKPOINT)
-    print("Run classification with model from", CHECKPOINT)
-    if with_mask:
-        print("with mask")
-    else:
-        print("WITHOUT mask")
 
     marker_paths = glob(os.path.join(ds_folder, "images", "ome-zarr", "*marker*"))
     marker_paths.sort()
