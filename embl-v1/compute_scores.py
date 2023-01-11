@@ -34,15 +34,20 @@ def _compute_scores(well_name, well_table, plate_config):
         "score_mean": [],
         "median_intensity": [],
         "median_intensity_std": [],
-        "spike_intensity": [],
         "score_median": [],
+        "spike_median_intensity": [],
         "normalization_ratio": [],
-        "other_ratio": [],
     }
 
     def _compute_intensity(column, mask):
         intensities = well_table[column].values[mask]
         return np.mean(intensities), np.std(intensities)
+
+    def _compute_intensity_ratio(column_nom, column_denom, correction_nom, mask):
+        nominator = well_table[column_nom][mask]
+        denominator = well_table[column_denom][mask]
+        values = (nominator - correction_nom) / denominator
+        return np.mean(values)
 
     bg_mask = well_table["prediction"].isin(untagged_patterns)
     bg_mean_intensity, bg_mean_intensity_std = _compute_intensity("serum_mean", bg_mask)
@@ -58,33 +63,22 @@ def _compute_scores(well_name, well_table, plate_config):
         mean_intensity, mean_intensity_std = _compute_intensity("serum_mean", pattern_mask)
         score_table["mean_intensity"].append(mean_intensity)
         score_table["mean_intensity_std"].append(mean_intensity_std)
-        score_table["score_mean"].append(mean_intensity / bg_mean_intensity)
+        score_table["score_mean"].append((mean_intensity - bg_mean_intensity) / bg_mean_intensity)
 
         # median based score measure
         median_intensity, median_intensity_std = _compute_intensity("serum_median", pattern_mask)
         score_table["median_intensity"].append(median_intensity)
         score_table["median_intensity_std"].append(median_intensity_std)
-        score_table["score_median"].append(median_intensity / bg_median_intensity)
+        score_table["score_median"].append((median_intensity - bg_median_intensity) / bg_median_intensity)
 
         # spike intensity
         spike_intensity, _ = _compute_intensity("spike_median", pattern_mask)
-        score_table["spike_intensity"].append(spike_intensity)
+        score_table["spike_median_intensity"].append(spike_intensity)
 
         # ratio measures
-        if compute_norm_ratio:
-            spike_intensity, _ = _compute_intensity("spike_median", pattern_mask)
-            score_table["normalization_ratio"].append(
-                (median_intensity - bg_median_intensity) / spike_intensity
-            )
-        else:
-            score_table["normalization_ratio"].append(None)
-
-        if compute_other_ratio:
-            score_table["other_ratio"].append(
-                (median_intensity - bg_median_intensity) / bg_median_intensity
-            )
-        else:
-            score_table["other_ratio"].append(None)
+        score_table["normalization_ratio"].append(
+            _compute_intensity_ratio("serum_median", "spike_median", bg_median_intensity, pattern_mask)
+        )
 
         return score_table
 
