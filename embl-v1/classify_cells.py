@@ -16,10 +16,10 @@ from plate_utils import read_plate_config, to_well_name, CLASSES, OUTPUT_ROOT
 
 # CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
 #                           "classification_v3_resnet18_with_mask")
-# CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
-#                           "classification_v3_resnet18")
 CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
-                          "classification_v1_augmentations")
+                          "classification_v3_resnet18")
+# CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
+#                           "classification_v1_augmentations")
 
 
 def no_filter(position, pattern):

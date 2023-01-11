@@ -34,6 +34,7 @@ def _compute_scores(well_name, well_table, plate_config):
         "score_mean": [],
         "median_intensity": [],
         "median_intensity_std": [],
+        "spike_intensity": [],
         "score_median": [],
         "normalization_ratio": [],
         "other_ratio": [],
@@ -64,6 +65,10 @@ def _compute_scores(well_name, well_table, plate_config):
         score_table["median_intensity"].append(median_intensity)
         score_table["median_intensity_std"].append(median_intensity_std)
         score_table["score_median"].append(median_intensity / bg_median_intensity)
+
+        # spike intensity
+        spike_intensity, _ = _compute_intensity("spike_median", pattern_mask)
+        score_table["spike_intensity"].append(spike_intensity)
 
         # ratio measures
         if compute_norm_ratio:

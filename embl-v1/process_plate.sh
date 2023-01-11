@@ -24,8 +24,8 @@ CUDA_VISIBLE_DEVICES="" python segment_nuclei.py ${config_file}
 source activate torch10
 CUDA_VISIBLE_DEVICES=${cuda_device} python segment_cells.py ${config_file}
 
-python compute_statistics.py ${config_file}
-python find_stained_cells.py ${config_file}
+python compute_intensities.py ${config_file}
 CUDA_VISIBLE_DEVICES=${cuda_device} python classify_cells.py ${config_file}
+python compute_cell_qc.py ${config_file}
 
-# python scores.py ${config_file}
+python compute_scores.py ${config_file}
