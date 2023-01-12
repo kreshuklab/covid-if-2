@@ -1,22 +1,25 @@
 import os
 from training_impl import train_classification
+from torchvision.models import resnet
 
 
-# TODO:
-# - improve cell segmentation (cellpose nucleus model?) -> wait for mobie working
-# - filtering for segmentation errors (based on hard edges) -> wait for mobie working
-# - visualisation: display class and prediction labels on top of grid
-# - add augmentations
 def main():
-    root = "/scratch/pape/covid-if-2/training_data/classification/v1"
+    root = "/scratch/pape/covid-if-2/training_data/classification/v5"
     train_path = os.path.join(root, "train.zarr")
     val_path = os.path.join(root, "val.zarr")
     image_shape = (152, 152)
-    # name = "classification_v1_augmentations"
-    name = "classification_v1_x"
+
+    use_mask = False
+    model = "resnet18"
+
+    name = f"classification_v5_{model}"
+    if use_mask:
+        name = f"{name}_with_mask"
+
     normalization = "minmax"
     learning_rate = 1e-4
-    train_classification(name, train_path, val_path, image_shape, normalization, learning_rate)
+    train_classification(name, train_path, val_path, image_shape, normalization, learning_rate,
+                         use_mask=use_mask, modelCls=getattr(resnet, model))
 
 
 if __name__ == "__main__":

@@ -201,7 +201,7 @@ class CellClassificationDataset(torch.utils.data.Dataset):
     def _normalize_median(self, x, stats):
         raise NotImplementedError
 
-    def __init__(self, data_path, image_shape, normalization, augmentation=None):
+    def __init__(self, data_path, image_shape, normalization, augmentation=None, use_mask=False):
         self.f = open_file(data_path, "r")
         self.n_classes = len(self.f.attrs["classes"])
         self.channels = self.f.attrs["channels"]
@@ -220,6 +220,8 @@ class CellClassificationDataset(torch.utils.data.Dataset):
         else:
             self.normalization = self._normalize_median
 
+        self.use_mask = use_mask
+
     def __len__(self):
         return self.n_samples
 
@@ -228,6 +230,12 @@ class CellClassificationDataset(torch.utils.data.Dataset):
             resize(channel, self.image_shape, preserve_range=True)[None] for channel in x
         ]
         return np.concatenate(out, axis=0)
+
+    def apply_mask(self, x):
+        mask = x[-1].astype("bool")
+        x[0][~mask] = 0
+        x[1][~mask] = 0
+        return x
 
     def __getitem__(self, index):
         key = f"sample{index:06}"
@@ -240,7 +248,9 @@ class CellClassificationDataset(torch.utils.data.Dataset):
         # process the data/input:
         x = ds[:]
         # apply normalization
-        x = self.normalization(x, ds.attrs["statistics"])
+        x = self.normalization(x, ds.attrs.get("statistics", None))
+        if self.use_mask:
+            x = self.apply_mask(x)
         # resize to sample shape
         x = self.resize(x)
         # apply augmentations (if any)
@@ -253,12 +263,14 @@ class CellClassificationDataset(torch.utils.data.Dataset):
 
 
 def get_loader(data_path, image_shape, normalization, batch_size,
-               use_augmentations=True, num_workers=8, drop_last=True):
+               use_augmentations=True, num_workers=8, drop_last=True,
+               use_mask=False):
     if use_augmentations:
         augmentation = torch_em.transform.get_augmentations(ndim=2)
     else:
         augmentation = None
-    ds = CellClassificationDataset(data_path, image_shape, normalization, augmentation=augmentation)
+    ds = CellClassificationDataset(data_path, image_shape, normalization, augmentation=augmentation,
+                                   use_mask=use_mask)
     loader = torch.utils.data.DataLoader(
         ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=drop_last
     )
@@ -273,16 +285,19 @@ def get_num_classes(path):
 
 
 def train_classification(
-    name, train_path, val_path, image_shape, normalization, learning_rate, batch_size=32
+    name, train_path, val_path, image_shape, normalization, learning_rate,
+    batch_size=32, use_mask=False, modelCls=None,
 ):
     num_classes = get_num_classes(train_path)
     print("Start training with", num_classes, "classes")
 
-    train_loader = get_loader(train_path, image_shape, normalization, batch_size)
-    val_loader = get_loader(val_path, image_shape, normalization, batch_size)
+    train_loader = get_loader(train_path, image_shape, normalization, batch_size, use_mask=use_mask)
+    val_loader = get_loader(val_path, image_shape, normalization, batch_size, use_mask=use_mask)
 
-    # TODO enable using something bigger than resnet18
-    model = resnet18(num_classes=num_classes)
+    if modelCls is None:
+        model = resnet18(num_classes=num_classes)
+    else:
+        model = modelCls(num_classes=num_classes)
     loss = torch.nn.CrossEntropyLoss()
 
     # metric: note that we use lower metric = better !
