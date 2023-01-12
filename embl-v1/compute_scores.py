@@ -2,8 +2,11 @@ import argparse
 import os
 from glob import glob
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
+from scipy.stats.mstats import pearsonr
 
 from plate_utils import read_plate_config, to_well_name, OUTPUT_ROOT
 
@@ -16,8 +19,64 @@ PATTERN_TO_NAME = {
 }
 
 
+def _score_plot(score_table, save_path):
+    plot_table = score_table[score_table["pattern"] != "Control - Lamin"]
+    sns.barplot(data=plot_table, x="pattern", y="score_median")
+    y_max = np.ceil(plot_table["score_median"].max())
+    plt.ylim(1.0, y_max)
+    plt.xticks(rotation=90)
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+
+
+def _ratio_plot(score_table, save_path):
+    col_name = "normalization_ratio"
+
+    ratio_patterns = list(PATTERN_TO_NAME.values())[:3]
+    plot_table = score_table[score_table["pattern"].isin(ratio_patterns)]
+    plot_table[col_name] = plot_table[col_name].apply(
+        lambda x: x / plot_table[col_name][0]
+    )
+    ax = sns.barplot(data=plot_table, x="pattern", y=col_name)
+    ax.bar_label(ax.containers[0])
+    plt.xticks(rotation=90)
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+
+
+def _compute_pearson(table, pattern):
+    tab = table[table["prediction"] == pattern]
+    x = tab["spike_median"].values
+    y = tab["serum_median"].values
+    r, _ = pearsonr(x, y)
+    return r
+
+
+# missing from the sketch: linear fit (I wouldn't add it to avoid clutter)
+def _correlation_plot(well_table, save_path):
+    plot_table = well_table.copy()
+    plot_table["prediction"] = plot_table["prediction"].apply(lambda x: PATTERN_TO_NAME[x])
+    corr_patterns = list(PATTERN_TO_NAME.values())[:4]
+    plot_table = plot_table[plot_table["prediction"].isin(corr_patterns)]
+
+    coefficients = {pattern: _compute_pearson(plot_table, pattern)
+                    for pattern in corr_patterns}
+    plot_table["prediction"] = plot_table["prediction"].apply(lambda x: f"{x}: {coefficients[x]:0.2f}")
+    plot_table = plot_table.rename(columns={"prediction": "Pearson's R"})
+
+    sns.scatterplot(
+        data=plot_table, x="spike_median", y="serum_median",
+        hue="Pearson's R", style="Pearson's R"
+    )
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+
+
 def _make_plots(score_table, well_table, res_folder):
-    pass
+    well_name = score_table["well"][0]
+    _score_plot(score_table, os.path.join(res_folder, f"{well_name}_scores.png"))
+    _ratio_plot(score_table, os.path.join(res_folder, f"{well_name}_ratios.png"))
+    _correlation_plot(well_table, os.path.join(res_folder, f"{well_name}_correlation.png"))
 
 
 def _insert_empty_row(table):
@@ -57,8 +116,8 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
 
     # background subtraction
     bg_serum, bg_spike = well_bg["serum"], well_bg["spike"]
-    well_table["serum_median"] -= bg_serum
-    well_table["spike_median"] -= bg_spike
+    well_table.loc[:, "serum_median"] -= bg_serum
+    well_table.loc[:, "spike_median"] -= bg_spike
 
     def _compute_intensity(column, mask):
         intensities = well_table[column].values[mask]
@@ -203,7 +262,6 @@ def compute_scores(plate_config):
     # save as excel
     save_path = os.path.join(res_folder, f"{folder_name}.xlsx")
     print("Analysis results were saved to", save_path)
-    breakpoint()
     scores.to_excel(save_path, index=False)
 
     # TODO save in MoBIE format
