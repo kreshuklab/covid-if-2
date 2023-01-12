@@ -10,6 +10,8 @@ from scipy.stats.mstats import pearsonr
 
 from plate_utils import read_plate_config, to_well_name, OUTPUT_ROOT
 
+pd.options.mode.chained_assignment = None
+
 PATTERN_TO_NAME = {
     "mScarlet-Giantin": "Wildtype - Giantin",
     "LCK-mScarlet": "Delta - LCK",
@@ -21,8 +23,8 @@ PATTERN_TO_NAME = {
 
 def _score_plot(score_table, save_path):
     plot_table = score_table[score_table["pattern"] != "Control - Lamin"]
-    sns.barplot(data=plot_table, x="pattern", y="score_median")
-    y_max = np.ceil(plot_table["score_median"].max())
+    sns.barplot(data=plot_table, x="pattern", y="score")
+    y_max = np.ceil(plot_table["score"].max())
     plt.ylim(1.0, y_max)
     plt.xticks(rotation=90)
     plt.savefig(save_path, bbox_inches="tight")
@@ -56,8 +58,11 @@ def _compute_pearson(table, pattern):
 def _correlation_plot(well_table, save_path):
     plot_table = well_table.copy()
     plot_table["prediction"] = plot_table["prediction"].apply(lambda x: PATTERN_TO_NAME[x])
+
     corr_patterns = list(PATTERN_TO_NAME.values())[:4]
     plot_table = plot_table[plot_table["prediction"].isin(corr_patterns)]
+
+    plot_table.sort_values(by="prediction", key=lambda z: z.apply(lambda x: corr_patterns.index(x)), inplace=True)
 
     coefficients = {pattern: _compute_pearson(plot_table, pattern)
                     for pattern in corr_patterns}
@@ -104,13 +109,10 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
         "well": (len(patterns) + 1) * [well_name],
         "pattern": [],
         "number_cells": [],
-        "mean_intensity": [],
-        "mean_intensity_std": [],
-        "score_mean": [],
-        "median_intensity": [],
-        "median_intensity_std": [],
-        "score_median": [],
-        "spike_median_intensity": [],
+        "serum_intensity": [],
+        "serum_intensity_std": [],
+        "score": [],
+        "spike_intensity": [],
         "normalization_ratio": [],
     }
 
@@ -130,8 +132,7 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
         return np.mean(values)
 
     control_mask = well_table["prediction"].isin(control_patterns)
-    control_mean_intensity, control_mean_intensity_std = _compute_intensity("serum_mean", control_mask)
-    control_median_intensity, control_median_intensity_std = _compute_intensity("serum_median", control_mask)
+    control_intensity, control_intensity_std = _compute_intensity("serum_median", control_mask)
 
     def _stats_for_patterns(name, patterns, compute_norm_ratio, compute_other_ratio):
         if name == "spike":
@@ -142,25 +143,19 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
         pattern_mask = well_table["prediction"].isin(patterns)
         score_table["number_cells"].append(pattern_mask.sum())
 
-        # mean based score measure
-        mean_intensity, mean_intensity_std = _compute_intensity("serum_mean", pattern_mask)
-        score_table["mean_intensity"].append(mean_intensity)
-        score_table["mean_intensity_std"].append(mean_intensity_std)
-        score_table["score_mean"].append(mean_intensity / control_mean_intensity)
-
         # median based score measure
         median_intensity, median_intensity_std = _compute_intensity("serum_median", pattern_mask)
-        score_table["median_intensity"].append(median_intensity)
-        score_table["median_intensity_std"].append(median_intensity_std)
-        score_table["score_median"].append(median_intensity / control_median_intensity)
+        score_table["serum_intensity"].append(median_intensity)
+        score_table["serum_intensity_std"].append(median_intensity_std)
+        score_table["score"].append(median_intensity / control_intensity)
 
         # spike intensity
         spike_intensity, _ = _compute_intensity("spike_median", pattern_mask)
-        score_table["spike_median_intensity"].append(spike_intensity)
+        score_table["spike_intensity"].append(spike_intensity)
 
         # ratio measures
         score_table["normalization_ratio"].append(
-            _compute_intensity_ratio("serum_median", "spike_median", control_median_intensity, pattern_mask)
+            _compute_intensity_ratio("serum_median", "spike_median", control_intensity, pattern_mask)
         )
 
         return score_table
@@ -218,7 +213,7 @@ def compute_scores(plate_config):
         this_table = pd.concat(
             [
                 default_table[["prediction", "qc_passed"]],
-                cell_table[["serum_median", "serum_mean", "spike_median"]],
+                cell_table[["serum_median", "spike_median"]],
             ], axis=1
         )
 
@@ -230,6 +225,8 @@ def compute_scores(plate_config):
     well_to_bg = {}
     bg_stat_table = pd.read_csv(os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv"), sep="\t")
     for _, row in bg_stat_table.iterrows():
+        if row.region_id in qc_failed:
+            continue
         well = row.region_id.split("_")[0]
         if well in well_to_bg:
             bg_serum, bg_spike = well_to_bg[well]["serum"], well_to_bg[well]["spike"]
@@ -261,10 +258,10 @@ def compute_scores(plate_config):
 
     # save as excel
     save_path = os.path.join(res_folder, f"{folder_name}.xlsx")
-    print("Analysis results were saved to", save_path)
+    print("Analysis results were saved to", res_folder)
     scores.to_excel(save_path, index=False)
 
-    # TODO save in MoBIE format
+    # TODO zip the folder
 
 
 def main():

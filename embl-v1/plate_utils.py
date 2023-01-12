@@ -5,8 +5,10 @@ import string
 # CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Lamin", "mScarlet-Giantin"]
 # classes and order for the v2 models
 # CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Lamin", "mScarlet-Giantin", "untagged"]
-# classes and order for the v3 models
+# classes and order for the v3 and v5 models
 CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Giantin", "mScarlet-Lamin"]
+# classes and order for the v4 model
+# CLASSES = ["Giantin", "LCK", "H2A", "3xNLS", "Lamin"]
 
 INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
 

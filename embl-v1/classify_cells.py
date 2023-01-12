@@ -9,7 +9,7 @@ import zarr
 
 from skimage.transform import resize
 from tqdm import tqdm
-from torchvision.models.resnet import resnet18
+from torchvision.models.resnet import resnet34
 
 from plate_utils import read_plate_config, to_well_name, CLASSES, OUTPUT_ROOT
 
@@ -17,7 +17,7 @@ from plate_utils import read_plate_config, to_well_name, CLASSES, OUTPUT_ROOT
 # CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
 #                           "classification_v3_resnet18_with_mask")
 CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
-                          "classification_v3_resnet18")
+                          "classification_v5_resnet34_with_mask")
 # CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
 #                           "classification_v1_augmentations")
 
@@ -40,7 +40,7 @@ FILTER_FUNCTIONS = {"no_filter": no_filter, "training_plate_filter": training_pl
 
 def load_model(checkpoint):
     device = torch.device("cuda")
-    model = resnet18(num_classes=len(CLASSES))
+    model = resnet34(num_classes=len(CLASSES))
     model_state = torch.load(os.path.join(checkpoint, "best_model.pt"))
     model.load_state_dict(model_state)
     model.eval()
