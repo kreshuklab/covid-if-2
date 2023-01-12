@@ -1,0 +1,7 @@
+{
+    "folder": "20221220_mSc_untagged_serum_copy",
+    "nested": false,
+    "channel_order": {"0": "marker", "1": "nuclei", "2": "serum"},
+    "channel_colors": {"nuclei": "blue", "serum": "green", "marker": "red"},
+    "to_site_name": "to_site_name_new"
+}

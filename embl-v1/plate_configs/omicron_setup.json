@@ -1,0 +1,7 @@
+{
+    "folder": "20221210_Omicron_Setup",
+    "nested": false,
+    "channel_order": {"0": "nuclei", "1": "serum", "2": "marker", "3": "spike"},
+    "channel_colors": {"nuclei": "blue", "serum": "green", "marker": "red", "spike": "red"},
+    "to_site_name": "to_site_name_new"
+}

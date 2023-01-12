@@ -1,0 +1,11 @@
+{
+    "folder": "230111_Test_bindingaffinity",
+    "nested": false,
+    "channel_order": {"0": "nuclei", "1": "serum", "2": "marker", "3": "spike"},
+    "channel_colors": {"nuclei": "blue", "serum": "green", "marker": "red", "spike": "red"},
+    "to_site_name": "to_site_name_new",
+    "spike_patterns": ["LCK-mScarlet", "mScarlet-H2A", "mScarlet-Giantin"],
+    "nucleocapsid_patterns": ["3xNLS-mScarlet"],
+    "untagged_patterns": ["mScarlet-Lamin"]
+}
+
