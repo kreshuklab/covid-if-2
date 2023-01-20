@@ -18,6 +18,10 @@ def median_absolute_deviation(x):
     return mad
 
 
+def saturation_ratio(x, saturation_threshold=16384):
+    return float((x >= saturation_threshold).sum()) / x.sum()
+
+
 # robust statistics
 STATS = {
     "median": np.median,
@@ -25,6 +29,7 @@ STATS = {
     "q95": partial(np.percentile, q=95),
     "mad": median_absolute_deviation,
     "mean": np.mean,
+    "saturation_ratio": saturation_ratio,
 }
 
 
@@ -52,7 +57,7 @@ def compute_stats(ds_folder, position, seg_name, pos_sources, sources):
         with open_file(image_path, "r") as f:
             channels[channel_name] = f["s0"][:]
 
-    rows = {"label_id": []}
+    rows = {"label_id": [], "size": []}
     rows.update({f"{channel_name}_{stat}": [] for channel_name in channels.keys() for stat in STATS})
     seg_ids = np.unique(seg)
     for seg_id in seg_ids:
@@ -62,6 +67,9 @@ def compute_stats(ds_folder, position, seg_name, pos_sources, sources):
             x = channel[mask]
             for stat, func in STATS.items():
                 rows[f"{channel_name}_{stat}"].append(func(x))
+
+        # statistics independent of intensity
+        rows["size"].append(mask.sum())
 
     table = pd.DataFrame.from_dict(rows)
     return table

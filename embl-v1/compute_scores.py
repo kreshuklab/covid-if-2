@@ -116,19 +116,28 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
         "normalization_ratio": [],
     }
 
+    # TODO use measured or computed offsets???
+    # bleedthrough formula:
+    # Serum_correct = (Serum_raw - 160) - ((Marker_raw - 110) x 0,015) - ((Spike_raw - 160) x 0,06)
     # background subtraction
-    bg_serum, bg_spike = well_bg["serum"], well_bg["spike"]
-    well_table.loc[:, "serum_median"] -= bg_serum
-    well_table.loc[:, "spike_median"] -= bg_spike
+    serum_offset, spike_offset, marker_offset = well_bg["serum"], well_bg["spike"], well_bg["marker"]
+
+    serum_correction = serum_offset +\
+        (well_table.loc[:, "marker_median"] - marker_offset) * 0.015 +\
+        (well_table.loc[:, "spike_median"] - spike_offset) * 0.06
+
+    well_table.loc[:, "serum_median"] -= serum_correction
+
+    well_table.loc[:, "spike_median"] -= spike_offset
 
     def _compute_intensity(column, mask):
         intensities = well_table[column].values[mask]
         return np.mean(intensities), np.std(intensities)
 
-    def _compute_intensity_ratio(column_nom, column_denom, correction_nom, mask):
+    def _compute_intensity_ratio(column_nom, column_denom, mask):
         nominator = well_table[column_nom][mask]
         denominator = well_table[column_denom][mask]
-        values = (nominator - correction_nom) / denominator
+        values = nominator / denominator
         return np.mean(values)
 
     control_mask = well_table["prediction"].isin(control_patterns)
@@ -155,7 +164,7 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
 
         # ratio measures
         score_table["normalization_ratio"].append(
-            _compute_intensity_ratio("serum_median", "spike_median", control_intensity, pattern_mask)
+            _compute_intensity_ratio("serum_median", "spike_median", pattern_mask)
         )
 
         return score_table
@@ -182,7 +191,7 @@ def quality_control_image(site_name, table):
         print("Site:", site_name, "did not pass quality control because it contains too few cells:",
               n_cells, "<", min_num_cells)
         return False
-    max_num_cells = 700
+    max_num_cells = 650
     if n_cells > max_num_cells:
         print("Site:", site_name, "did not pass quality control because it contains too many cells:",
               n_cells, ">", max_num_cells)
@@ -213,7 +222,7 @@ def compute_scores(plate_config):
         this_table = pd.concat(
             [
                 default_table[["prediction", "qc_passed"]],
-                cell_table[["serum_median", "spike_median"]],
+                cell_table[["serum_median", "spike_median", "marker_median"]],
             ], axis=1
         )
 
@@ -229,18 +238,22 @@ def compute_scores(plate_config):
             continue
         well = row.region_id.split("_")[0]
         if well in well_to_bg:
-            bg_serum, bg_spike = well_to_bg[well]["serum"], well_to_bg[well]["spike"]
+            bg_serum = well_to_bg[well]["serum"]
+            bg_spike = well_to_bg[well]["spike"]
+            bg_marker = well_to_bg[well]["marker"]
         else:
-            bg_serum, bg_spike = [], []
+            bg_serum, bg_spike, bg_marker = [], [], []
 
         bg_serum.append(row.serum_median)
         bg_spike.append(row.spike_median)
+        bg_marker.append(row.marker_median)
 
-        well_to_bg[well] = {"serum": bg_serum, "spike": bg_spike}
+        well_to_bg[well] = {"serum": bg_serum, "spike": bg_spike, "marker": bg_marker}
 
     well_to_bg = {
         well: {"serum": np.mean(well_to_bg[well]["serum"]),
-               "spike": np.mean(well_to_bg[well]["spike"])}
+               "spike": np.mean(well_to_bg[well]["spike"]),
+               "marker": np.mean(well_to_bg[well]["marker"])}
         for well in well_to_bg
     }
 

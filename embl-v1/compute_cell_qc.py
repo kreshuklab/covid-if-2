@@ -67,6 +67,7 @@ def cell_qc_site(plate_config, table_folder, verbose):
     assert nc_patterns is not None
     untagged_patterns = plate_config.untagged_patterns
     assert untagged_patterns is not None
+    all_patterns = spike_patterns + nc_patterns + untagged_patterns
 
     default_table_path = os.path.join(table_folder, "default.tsv")
     default_table = pd.read_csv(default_table_path, sep="\t")
@@ -80,9 +81,10 @@ def cell_qc_site(plate_config, table_folder, verbose):
     qc_input = pd.concat(
         [
             default_table[["label_id", "prediction"]],
-            cell_table[["serum_median", "spike_median", "marker_median", "serum_mean"]],
-            nucleus_table[["marker_median"]].rename(
-                columns={"marker_median": "marker_median_nucleus"}
+            cell_table[["serum_median", "spike_median", "marker_median",
+                        "serum_mean", "size", "marker_saturation_ratio"]],
+            nucleus_table[["marker_median", "size"]].rename(
+                columns={"marker_median": "marker_median_nucleus", "size": "size_nucleus"}
             )
         ], axis=1
     )
@@ -103,7 +105,18 @@ def cell_qc_site(plate_config, table_folder, verbose):
     qc_result = _qc_cell_absolute(qc_input, qc_result, untagged_patterns, "spike_median", threshold=300, op=np.less,
                                   verbose=verbose, reason="Spike intensity in BG Cell")
 
-    # 4.) filter cells based on the marker expressions for each individual pattern,
+    # 4.) size based thresholding
+    # TODO determine the thresholds
+    # qc_result = _qc_size(qc_input, qc_result, all_patterns, "size", op=np.greater, threshold=?,
+    #                      reason="cell too small")
+    # qc_result = _qc_size(qc_input, qc_result, all_patterns, "size", op=np.less, threshold=?,
+    #                      reason="cell too large")
+    # qc_result = _qc_size(qc_input, qc_result, all_patterns, "size_nucleus", op=np.greater, threshold=?,
+    #                      reason="nucleus too small")
+    # qc_result = _qc_size(qc_input, qc_result, all_patterns, "size_nucleus", op=np.less, threshold=?,
+    #                      reason="nucleus too large")
+
+    # 5.) filter cells based on the marker expressions for each individual pattern,
     # with empirically determined threshold values
     qc_result = _qc_cell_absolute(qc_input, qc_result, ["LCK-mScarlet"], "marker_median", threshold=200,
                                   verbose=verbose, reason="Marker intensity LCK")
@@ -114,6 +127,11 @@ def cell_qc_site(plate_config, table_folder, verbose):
     qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-Lamin"], "marker_median_nucleus", threshold=250,
                                   verbose=verbose, reason="Marker intensity Lamin")
     # mScarlet-Giantin is not thresholded
+
+    # 6.) filter saturated H2A cells
+    # TODO nucleus or cell?
+    # qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-H2A"], "marker_saturation_ratio", threshold=0.3,
+    #                               op=np.less, verbose=verbose, reason="H2A Marker saturation")
 
     if verbose:
         print("In total", qc_result["qc_passed"].values.sum(), "/", len(qc_result), "cells have passed QC.")
