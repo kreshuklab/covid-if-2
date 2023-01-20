@@ -201,9 +201,16 @@ class CellClassificationDataset(torch.utils.data.Dataset):
     def _normalize_median(self, x, stats):
         raise NotImplementedError
 
-    def __init__(self, data_path, image_shape, normalization, augmentation=None, use_mask=False):
+    def __init__(self, data_path, image_shape, normalization,
+                 augmentation=None, use_mask=False, class_names=None):
         self.f = open_file(data_path, "r")
-        self.n_classes = len(self.f.attrs["classes"])
+
+        self.class_names = class_names
+        if self.class_names is None:
+            self.n_classes = len(self.f.attrs["classes"])
+        else:
+            self.n_classes = len(self.class_names)
+
         self.channels = self.f.attrs["channels"]
         self.n_samples = len([k for k in self.f if k.startswith("sample")])
         self.augmentation = augmentation
@@ -242,7 +249,10 @@ class CellClassificationDataset(torch.utils.data.Dataset):
         ds = self.f[key]
 
         # process the target
-        y = ds.attrs["class_id"]
+        if self.class_names is None:
+            y = ds.attrs["class_id"]
+        else:
+            y = self.class_names.index(ds.attrs["class_name"])
         assert 0 <= y < self.n_classes
 
         # process the data/input:
@@ -264,13 +274,13 @@ class CellClassificationDataset(torch.utils.data.Dataset):
 
 def get_loader(data_path, image_shape, normalization, batch_size,
                use_augmentations=True, num_workers=8, drop_last=True,
-               use_mask=False):
+               use_mask=False, class_names=None):
     if use_augmentations:
         augmentation = torch_em.transform.get_augmentations(ndim=2)
     else:
         augmentation = None
     ds = CellClassificationDataset(data_path, image_shape, normalization, augmentation=augmentation,
-                                   use_mask=use_mask)
+                                   use_mask=use_mask, class_names=class_names)
     loader = torch.utils.data.DataLoader(
         ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=drop_last
     )
