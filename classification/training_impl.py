@@ -296,7 +296,7 @@ def get_num_classes(path):
 
 def train_classification(
     name, train_path, val_path, image_shape, normalization, learning_rate,
-    batch_size=32, use_mask=False, modelCls=None,
+    batch_size=32, use_mask=False, modelCls=None, pretrain_ckpt=None,
 ):
     num_classes = get_num_classes(train_path)
     print("Start training with", num_classes, "classes")
@@ -308,6 +308,12 @@ def train_classification(
         model = resnet18(num_classes=num_classes)
     else:
         model = modelCls(num_classes=num_classes)
+
+    if pretrain_ckpt is not None:
+        print("Loading weights from", pretrain_ckpt)
+        weights = torch.load(pretrain_ckpt)["model_state"]
+        model.load_state_dict(weights)
+
     loss = torch.nn.CrossEntropyLoss()
 
     # metric: note that we use lower metric = better !

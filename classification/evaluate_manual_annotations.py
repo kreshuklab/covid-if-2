@@ -12,8 +12,10 @@ from training_impl import get_loader
 from tqdm import tqdm
 
 
-def get_class_names(model_version):
-    if model_version == 1:
+def get_class_names(model_version, manual):
+    if manual:  # all manual models are derived from prev. v3 or v5 models
+        return ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Giantin", "mScarlet-Lamin"]
+    elif model_version == 1:
         return ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Lamin", "mScarlet-Giantin"]
     elif model_version == 2:
         return ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Lamin", "mScarlet-Giantin", "untagged"]
@@ -26,7 +28,7 @@ def get_class_names(model_version):
 
 
 def evaluate_model(checkpoint, use_mask, class_names, data_version):
-    data_path = f"/scratch/pape/covid-if-2/training_data/manual/v{data_version}/data.zarr"
+    data_path = f"/scratch/pape/covid-if-2/training_data/manual/v{data_version}/test.zarr"
     num_classes = len(class_names)
 
     image_shape = (152, 152)
@@ -42,10 +44,8 @@ def evaluate_model(checkpoint, use_mask, class_names, data_version):
 
     with torch.no_grad():
         if "resnet" in checkpoint:
-            if use_mask:
-                model_name = checkpoint.split("_")[-3]
-            else:
-                model_name = checkpoint.split("_")[-1]
+            pos = checkpoint.find("resnet")
+            model_name = checkpoint[pos:(pos + len("resnet") + 2)]
             model = getattr(resnet, model_name)(num_classes=num_classes)
         else:
             model = resnet.resnet18(num_classes=num_classes)
@@ -74,14 +74,19 @@ def evaluate_model(checkpoint, use_mask, class_names, data_version):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--model_version", required=True, type=int)
+    parser.add_argument("-m", "--manual", default=0)
     args = parser.parse_args()
 
     model_version = args.model_version
+    manual = bool(args.manual)
     data_version = 1
 
-    class_names = get_class_names(model_version)
+    class_names = get_class_names(model_version, manual)
 
-    checkpoints = glob(os.path.join(f"checkpoints/classification_v{model_version}*"))
+    if manual:
+        checkpoints = glob(os.path.join(f"checkpoints/classification_manual_v{model_version}*"))
+    else:
+        checkpoints = glob(os.path.join(f"checkpoints/classification_v{model_version}*"))
     for ckpt in checkpoints:
         print(ckpt)
         use_mask = "with_mask" in ckpt

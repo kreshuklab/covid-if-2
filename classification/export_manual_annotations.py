@@ -5,26 +5,53 @@ import pandas as pd
 import numpy as np
 from elf.io import open_file
 
+CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Giantin", "mScarlet-Lamin"]
+
 
 def export_manual_annotations(input_folder, table_folder, output_folder):
     os.makedirs(output_folder, exist_ok=True)
     annotations = glob(os.path.join(table_folder, "*.tsv"))
 
-    ds_names = [
-        f"230107_mab_omscreen_Screen-Scene-{os.path.splitext(os.path.basename(ann))[0].rstrip('_Labeling').replace('_', '-')}"
-        for ann in annotations
-    ]
-    datasets = [os.path.join(input_folder, ds_name) for ds_name in ds_names]
-    assert all(os.path.exists(ds) for ds in datasets)
+    datasets = []
+    for ann in annotations:
+        x = os.path.splitext(os.path.basename(ann))[0].rstrip('_Labeling').replace('_', '-')
+        ds_name = f"230107_mab_omscreen_Screen-Scene-{x}"
+        dataset = os.path.join(input_folder, ds_name)
+        if not os.path.exists(dataset):
+            ds_name = f"230111_test_bindingaffinity_0.95-Scene-{x}"
+            dataset = os.path.join(input_folder, ds_name)
+        assert os.path.exists(dataset)
+        datasets.append(dataset)
 
-    output_path = os.path.join(output_folder, "data.zarr")
-    f_out = open_file(output_path, "a")
-    f_out.attrs["channels"] = ["marker", "nuclei", "mask"]
+    f_train = open_file(os.path.join(output_folder, "train.zarr"), "a")
+    f_train.attrs["channels"] = ["marker", "nuclei", "mask"]
+    f_train.attrs["classes"] = CLASSES
+
+    f_val = open_file(os.path.join(output_folder, "val.zarr"), "a")
+    f_val.attrs["channels"] = ["marker", "nuclei", "mask"]
+    f_val.attrs["classes"] = CLASSES
+
+    f_test = open_file(os.path.join(output_folder, "test.zarr"), "a")
+    f_test.attrs["channels"] = ["marker", "nuclei", "mask"]
+    f_test.attrs["classes"] = CLASSES
+
+    n_train, n_val = 6, 1
 
     exported_patterns = []
     ignored_cells = 0
+    total_n_cells = 0
+
+    f_out = f_train
     sample_id = 0
-    for ds, annotation_table in zip(datasets, annotations):
+
+    for ii, (ds, annotation_table) in enumerate(zip(datasets, annotations)):
+        if ii == n_train:
+            f_out = f_val
+            sample_id = 0
+        if ii == n_train + n_val:
+            f_out = f_test
+            sample_id = 0
+
         annotation_table = pd.read_csv(annotation_table, sep="\t")
 
         table_path = os.path.join(ds, "tables", "cell-segmentation", "default.tsv")
@@ -72,10 +99,12 @@ def export_manual_annotations(input_folder, table_folder, output_folder):
 
             ds = f_out.create_dataset(f"sample{sample_id:06}", data=data, chunks=data.shape)
             ds.attrs["class_name"] = pattern
+            ds.attrs["class_id"] = CLASSES.index(pattern)
             sample_id += 1
+            total_n_cells += 1
             exported_patterns.append(pattern)
 
-    print("Exported a total of", sample_id, "cells")
+    print("Exported a total of", total_n_cells, "cells")
     print("Classes:")
     class_ids, counts = np.unique(exported_patterns, return_counts=True)
     for class_name, count in zip(class_ids, counts):
