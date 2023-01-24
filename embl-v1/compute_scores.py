@@ -114,6 +114,7 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
         "score": [],
         "spike_intensity": [],
         "normalization_ratio": [],
+        "ratio_score": [],
     }
 
     # TODO use measured or computed offsets???
@@ -143,6 +144,9 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
     control_mask = well_table["prediction"].isin(control_patterns)
     control_intensity, control_intensity_std = _compute_intensity("serum_median", control_mask)
 
+    wt_mask = well_table["prediction"].isin(["mScarlet-Giantin"])
+    normalization_ratio_wt = _compute_intensity_ratio("serum_median", "spike_median", wt_mask)
+
     def _stats_for_patterns(name, patterns, compute_norm_ratio, compute_other_ratio):
         if name == "spike":
             score_table["pattern"].append("Spike")
@@ -163,9 +167,9 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
         score_table["spike_intensity"].append(spike_intensity)
 
         # ratio measures
-        score_table["normalization_ratio"].append(
-            _compute_intensity_ratio("serum_median", "spike_median", pattern_mask)
-        )
+        normalization_ratio = _compute_intensity_ratio("serum_median", "spike_median", pattern_mask)
+        score_table["normalization_ratio"].append(normalization_ratio)
+        score_table["ratio_score"].append(normalization_ratio / normalization_ratio_wt)
 
         return score_table
 

@@ -82,9 +82,11 @@ def cell_qc_site(plate_config, table_folder, verbose):
         [
             default_table[["label_id", "prediction"]],
             cell_table[["serum_median", "spike_median", "marker_median",
-                        "serum_mean", "size", "marker_saturation_ratio"]],
-            nucleus_table[["marker_median", "size"]].rename(
-                columns={"marker_median": "marker_median_nucleus", "size": "size_nucleus"}
+                        "serum_mean", "size"]],
+            nucleus_table[["marker_median", "size", "marker_saturation_ratio"]].rename(
+                columns={"marker_median": "marker_median_nucleus",
+                         "size": "size_nucleus",
+                         "marker_saturation_ratio": "marker_saturation_ratio_nucleus"}
             )
         ], axis=1
     )
@@ -93,30 +95,24 @@ def cell_qc_site(plate_config, table_folder, verbose):
     # perform quality control for the cells:
     #
 
-    # 1.) only keep top 75% of spike expressing cells
-    qc_result = _qc_cell_percentile(qc_input, None, spike_patterns, "spike_median", threshold=25,
-                                    verbose=verbose, reason="Spike intensity")
+    # 1.) only keep top 75% of the expression in the spike channel
+    # for any spike or nucleocapsid expressing pattern
+    qc_result = None
+    for pattern in spike_patterns + nc_patterns:
+        qc_result = _qc_cell_percentile(qc_input, qc_result, [pattern], "spike_median", threshold=25,
+                                        verbose=verbose, reason="Intensity in spike channel too low.")
 
-    # 2.) only keep top 75% of nucleocapsid expressing cells
-    qc_result = _qc_cell_percentile(qc_input, qc_result, nc_patterns, "spike_median", threshold=25,
-                                    verbose=verbose, reason="Nucleocapsid intensity")
-
-    # 3.) filter background cells that have express any spike pattern
+    # 2.) filter background cells that express spike pattern (have intensity < 300 in spike channel)
     qc_result = _qc_cell_absolute(qc_input, qc_result, untagged_patterns, "spike_median", threshold=300, op=np.less,
                                   verbose=verbose, reason="Spike intensity in BG Cell")
 
-    # 4.) size based thresholding
-    # TODO determine the thresholds
-    # qc_result = _qc_size(qc_input, qc_result, all_patterns, "size", op=np.greater, threshold=?,
-    #                      reason="cell too small")
-    # qc_result = _qc_size(qc_input, qc_result, all_patterns, "size", op=np.less, threshold=?,
-    #                      reason="cell too large")
-    # qc_result = _qc_size(qc_input, qc_result, all_patterns, "size_nucleus", op=np.greater, threshold=?,
-    #                      reason="nucleus too small")
-    # qc_result = _qc_size(qc_input, qc_result, all_patterns, "size_nucleus", op=np.less, threshold=?,
-    #                      reason="nucleus too large")
+    # 3.) size based thresholding
+    qc_result = _qc_cell_absolute(qc_input, qc_result, all_patterns, "size", op=np.greater, threshold=5000,
+                                  reason="cell too small")
+    qc_result = _qc_cell_absolute(qc_input, qc_result, all_patterns, "size", op=np.less, threshold=85000,
+                                  reason="cell too large")
 
-    # 5.) filter cells based on the marker expressions for each individual pattern,
+    # 4.) filter cells based on the marker expressions for each individual pattern,
     # with empirically determined threshold values
     qc_result = _qc_cell_absolute(qc_input, qc_result, ["LCK-mScarlet"], "marker_median", threshold=200,
                                   verbose=verbose, reason="Marker intensity LCK")
@@ -128,10 +124,9 @@ def cell_qc_site(plate_config, table_folder, verbose):
                                   verbose=verbose, reason="Marker intensity Lamin")
     # mScarlet-Giantin is not thresholded
 
-    # 6.) filter saturated H2A cells
-    # TODO nucleus or cell?
-    # qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-H2A"], "marker_saturation_ratio", threshold=0.3,
-    #                               op=np.less, verbose=verbose, reason="H2A Marker saturation")
+    # .) filter saturated H2A cells
+    qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-H2A"], "marker_saturation_ratio_nucleus",
+                                  threshold=0.15, op=np.less, verbose=verbose, reason="H2A Marker saturation")
 
     if verbose:
         print("In total", qc_result["qc_passed"].values.sum(), "/", len(qc_result), "cells have passed QC.")

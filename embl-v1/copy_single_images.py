@@ -5,7 +5,8 @@ import mobie
 import numpy as np
 
 ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
-OUT_ROOT = "./for-annotation"
+# CHANGE VERSION HERE!
+OUT_ROOT = "/g/kreshuk/data/covid-if-2/training_data/v2"
 
 
 def copy_well(dataset, well, pos_per_well):
@@ -69,16 +70,19 @@ def copy_well(dataset, well, pos_per_well):
 
 
 def main():
+    # v1: sampled from wells "F03", "E02", "D03", "B02" (2 pos each)
     dataset = "230107_mAB_OmScreen"
-    wells = ["F03", "E02", "D03", "B02"]
+    wells = ["G02", "E03", "D02", "B03", "G03"]
 
-    pos_per_well = 2
     for well in wells:
-        copy_well(dataset.lower(), well, pos_per_well)
+        copy_well(dataset.lower(), well, pos_per_well=2)
 
+    # v1: sampled from well E11 (2 pos)
     dataset = "230111_Test_bindingaffinity"
-    well = "E11"
-    copy_well(dataset.lower(), well, pos_per_well)
+    well = "B11"
+    copy_well(dataset.lower(), well, pos_per_well=2)
+    well = "D11"
+    copy_well(dataset.lower(), well, pos_per_well=3)
 
 
 if __name__ == "__main__":
