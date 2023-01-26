@@ -133,13 +133,13 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
 
     def _compute_intensity(column, mask):
         intensities = well_table[column].values[mask]
-        return np.mean(intensities), np.std(intensities)
+        return np.median(intensities), np.std(intensities)
 
     def _compute_intensity_ratio(column_nom, column_denom, mask):
         nominator = well_table[column_nom][mask]
         denominator = well_table[column_denom][mask]
         values = nominator / denominator
-        return np.mean(values)
+        return np.median(values)
 
     control_mask = well_table["prediction"].isin(control_patterns)
     control_intensity, control_intensity_std = _compute_intensity("serum_median", control_mask)
@@ -255,9 +255,9 @@ def compute_scores(plate_config):
         well_to_bg[well] = {"serum": bg_serum, "spike": bg_spike, "marker": bg_marker}
 
     well_to_bg = {
-        well: {"serum": np.mean(well_to_bg[well]["serum"]),
-               "spike": np.mean(well_to_bg[well]["spike"]),
-               "marker": np.mean(well_to_bg[well]["marker"])}
+        well: {"serum": np.median(well_to_bg[well]["serum"]),
+               "spike": np.median(well_to_bg[well]["spike"]),
+               "marker": np.median(well_to_bg[well]["marker"])}
         for well in well_to_bg
     }
 
