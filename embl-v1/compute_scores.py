@@ -20,6 +20,11 @@ PATTERN_TO_NAME = {
     "mScarlet-Lamin": "Control - Lamin"
 }
 
+# measured offset values for the relevant channels
+MARKER_OFFSET = 110
+SERUM_OFFSET = 160
+SPIKE_OFFSET = 160
+
 
 def _score_plot(score_table, save_path):
     plot_table = score_table[score_table["pattern"] != "Control - Lamin"]
@@ -92,7 +97,7 @@ def _insert_empty_row(table):
     return new_table
 
 
-def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
+def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     spike_patterns = plate_config.spike_patterns
     assert spike_patterns is not None
     nc_patterns = plate_config.nucleocapsid_patterns
@@ -117,19 +122,20 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder, well_bg):
         "ratio_score": [],
     }
 
-    # TODO use measured or computed offsets???
     # bleedthrough formula:
     # Serum_correct = (Serum_raw - 160) - ((Marker_raw - 110) x 0,015) - ((Spike_raw - 160) x 0,06)
     # background subtraction
-    serum_offset, spike_offset, marker_offset = well_bg["serum"], well_bg["spike"], well_bg["marker"]
 
-    serum_correction = serum_offset +\
-        (well_table.loc[:, "marker_median"] - marker_offset) * 0.015 +\
-        (well_table.loc[:, "spike_median"] - spike_offset) * 0.06
+    # Instead of using the precomputed offsets we use the directly measured ones
+    # serum_offset, spike_offset, marker_offset = well_bg["serum"], well_bg["spike"], well_bg["marker"]
+
+    serum_correction = SERUM_OFFSET +\
+        (well_table.loc[:, "marker_median"] - MARKER_OFFSET) * 0.015 +\
+        (well_table.loc[:, "spike_median"] - SPIKE_OFFSET) * 0.06
 
     well_table.loc[:, "serum_median"] -= serum_correction
 
-    well_table.loc[:, "spike_median"] -= spike_offset
+    well_table.loc[:, "spike_median"] -= SPIKE_OFFSET
 
     def _compute_intensity(column, mask):
         intensities = well_table[column].values[mask]
@@ -203,6 +209,47 @@ def quality_control_image(site_name, table):
     return True
 
 
+def check_offsets(ds_folder, qc_failed):
+    well_to_bg = {}
+    bg_stat_table = pd.read_csv(os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv"), sep="\t")
+    for _, row in bg_stat_table.iterrows():
+        if row.region_id in qc_failed:
+            continue
+        well = row.region_id.split("_")[0]
+        if well in well_to_bg:
+            bg_serum = well_to_bg[well]["serum"]
+            bg_spike = well_to_bg[well]["spike"]
+            bg_marker = well_to_bg[well]["marker"]
+        else:
+            bg_serum, bg_spike, bg_marker = [], [], []
+
+        bg_serum.append(row.serum_median)
+        bg_spike.append(row.spike_median)
+        bg_marker.append(row.marker_median)
+
+        well_to_bg[well] = {"serum": bg_serum, "spike": bg_spike, "marker": bg_marker}
+
+    well_to_bg = {
+        well: {"serum": np.median(well_to_bg[well]["serum"]),
+               "spike": np.median(well_to_bg[well]["spike"]),
+               "marker": np.median(well_to_bg[well]["marker"])}
+        for well in well_to_bg
+    }
+
+    # F02 is the control well without serum staining
+    if "F02" in well_to_bg:
+        off_measured_serum = well_to_bg["F02"]["serum"]
+        off_measured_spike = well_to_bg["F02"]["spike"]
+        off_measured_marker = well_to_bg["F02"]["marker"]
+
+        if np.abs(off_measured_serum - SERUM_OFFSET) > 10:
+            print(f"Measured {off_measured_serum} and pre-defined {SERUM_OFFSET} serum offsets differ for serum.")
+        if np.abs(off_measured_spike - SPIKE_OFFSET) > 10:
+            print(f"Measured {off_measured_spike} and pre-defined {SPIKE_OFFSET} spike offsets differ for spike.")
+        if np.abs(off_measured_marker - MARKER_OFFSET) > 10:
+            print(f"Measured {off_measured_marker} and pre-defined {MARKER_OFFSET} marker offsets differ for spike.")
+
+
 def compute_scores(plate_config):
     folder_name = os.path.basename(plate_config.folder).lower()
     ds_folder = os.path.join(OUTPUT_ROOT, folder_name)
@@ -235,39 +282,13 @@ def compute_scores(plate_config):
 
         well_to_table[well_name] = this_table
 
-    well_to_bg = {}
-    bg_stat_table = pd.read_csv(os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv"), sep="\t")
-    for _, row in bg_stat_table.iterrows():
-        if row.region_id in qc_failed:
-            continue
-        well = row.region_id.split("_")[0]
-        if well in well_to_bg:
-            bg_serum = well_to_bg[well]["serum"]
-            bg_spike = well_to_bg[well]["spike"]
-            bg_marker = well_to_bg[well]["marker"]
-        else:
-            bg_serum, bg_spike, bg_marker = [], [], []
-
-        bg_serum.append(row.serum_median)
-        bg_spike.append(row.spike_median)
-        bg_marker.append(row.marker_median)
-
-        well_to_bg[well] = {"serum": bg_serum, "spike": bg_spike, "marker": bg_marker}
-
-    well_to_bg = {
-        well: {"serum": np.median(well_to_bg[well]["serum"]),
-               "spike": np.median(well_to_bg[well]["spike"]),
-               "marker": np.median(well_to_bg[well]["marker"])}
-        for well in well_to_bg
-    }
+    check_offsets(ds_folder, qc_failed)
 
     res_folder = os.path.join("analysis_results", folder_name)
     os.makedirs(res_folder, exist_ok=True)
 
     # compute the actual scores
-    scores = [_scores_and_plots(well_name, well_table,
-                                plate_config, res_folder,
-                                well_to_bg[well_name])
+    scores = [_scores_and_plots(well_name, well_table, plate_config, res_folder)
               for well_name, well_table in well_to_table.items()]
 
     # to pandas table
