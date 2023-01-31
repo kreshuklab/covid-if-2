@@ -82,11 +82,38 @@ def _correlation_plot(well_table, save_path):
     plt.close()
 
 
-def _make_plots(score_table, well_table, res_folder):
+def _violin_plot(well_table, save_path, score_or_ratio, control_intensity, normalization_ratio_wt):
+    plot_table = well_table.copy()
+    plot_table["prediction"] = plot_table["prediction"].apply(lambda x: PATTERN_TO_NAME[x])
+
+    corr_patterns = list(PATTERN_TO_NAME.values())[:4]
+    plot_table = plot_table[plot_table["prediction"].isin(corr_patterns)]
+
+    plot_table.sort_values(by="prediction", key=lambda z: z.apply(lambda x: corr_patterns.index(x)), inplace=True)
+    plot_table = plot_table.rename(columns={"prediction": "protein"})
+
+    if score_or_ratio:
+        col_name = "score"
+        plot_table[col_name] = plot_table["serum_median"] / control_intensity
+    else:
+        col_name = "ratio_score"
+        plot_table[col_name] = (plot_table["serum_median"] / plot_table["spike_median"]) / normalization_ratio_wt
+
+    sns.violinplot(data=plot_table, x="protein", y=col_name)
+    plt.xticks(rotation=90)
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+
+
+def _make_plots(score_table, well_table, res_folder, control_intensity, normalization_ratio_wt):
     well_name = score_table["well"][0]
     _score_plot(score_table, os.path.join(res_folder, f"{well_name}_scores.png"))
     _ratio_plot(score_table, os.path.join(res_folder, f"{well_name}_ratios.png"))
     _correlation_plot(well_table, os.path.join(res_folder, f"{well_name}_correlation.png"))
+    _violin_plot(well_table, os.path.join(res_folder, f"{well_name}_violin_score.png"),
+                 True, control_intensity, normalization_ratio_wt)
+    _violin_plot(well_table, os.path.join(res_folder, f"{well_name}_violin_ratio_score.png"),
+                 False, control_intensity, normalization_ratio_wt)
 
 
 def _insert_empty_row(table):
@@ -188,7 +215,7 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     score_table = _stats_for_patterns("spike", spike_patterns, compute_norm_ratio=False, compute_other_ratio=True)
 
     score_table = pd.DataFrame.from_dict(score_table)
-    _make_plots(score_table, well_table, res_folder)
+    _make_plots(score_table, well_table, res_folder, control_intensity, normalization_ratio_wt)
 
     score_table = _insert_empty_row(score_table)
     return score_table

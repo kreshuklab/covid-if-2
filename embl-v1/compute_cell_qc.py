@@ -106,13 +106,18 @@ def cell_qc_site(plate_config, table_folder, verbose):
     qc_result = _qc_cell_absolute(qc_input, qc_result, untagged_patterns, "spike_median", threshold=300, op=np.less,
                                   verbose=verbose, reason="Spike intensity in BG Cell")
 
-    # 3.) size based thresholding
+    # 3.) Exclude all spike pattern cells that have a spike intensity > 5000:
+    # these are not possible physiologically, and indicate wrong classifications of 3xNLS  as a spike pattern
+    qc_result = _qc_cell_absolute(qc_input, qc_result, spike_patterns, "spike_median", op=np.less, threshold=5000,
+                                  reason="High spike channel intensity")
+
+    # 4.) size based thresholding
     qc_result = _qc_cell_absolute(qc_input, qc_result, all_patterns, "size", op=np.greater, threshold=5000,
                                   reason="cell too small")
     qc_result = _qc_cell_absolute(qc_input, qc_result, all_patterns, "size", op=np.less, threshold=85000,
                                   reason="cell too large")
 
-    # 4.) filter cells based on the marker expressions for each individual pattern,
+    # 5.) filter cells based on the marker expressions for each individual pattern,
     # with empirically determined threshold values
     qc_result = _qc_cell_absolute(qc_input, qc_result, ["LCK-mScarlet"], "marker_median", threshold=200,
                                   verbose=verbose, reason="Marker intensity LCK")
@@ -124,7 +129,7 @@ def cell_qc_site(plate_config, table_folder, verbose):
                                   verbose=verbose, reason="Marker intensity Lamin")
     # mScarlet-Giantin is not thresholded
 
-    # .) filter saturated H2A cells
+    # 6.) filter saturated H2A cells
     qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-H2A"], "marker_saturation_ratio_nucleus",
                                   threshold=0.15, op=np.less, verbose=verbose, reason="H2A Marker saturation")
 
