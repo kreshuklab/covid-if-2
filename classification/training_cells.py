@@ -13,11 +13,14 @@ def main():
     use_mask = True
     model = "resnet34"
 
-    name = f"classification_manual_v1_{model}_pretrained"
+    # pretrain_ckpt = "checkpoints/classification_v3_resnet34_with_mask/best.pt"
+    pretrain_ckpt = None
+
+    name = f"classification_manual_v2_{model}"
+    if pretrain_ckpt is not None:
+        name = f"{name}_pretrained"
     if use_mask:
         name = f"{name}_with_mask"
-
-    pretrain_ckpt = "checkpoints/classification_v3_resnet34_with_mask/best.pt"
 
     normalization = "minmax"
     learning_rate = 1e-4

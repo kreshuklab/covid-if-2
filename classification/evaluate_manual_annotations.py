@@ -74,12 +74,12 @@ def evaluate_model(checkpoint, use_mask, class_names, data_version):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--model_version", required=True, type=int)
-    parser.add_argument("-m", "--manual", default=0)
+    parser.add_argument("-m", "--manual", default=0, type=int)
     args = parser.parse_args()
 
     model_version = args.model_version
     manual = bool(args.manual)
-    data_version = 1
+    data_version = 2
 
     class_names = get_class_names(model_version, manual)
 
