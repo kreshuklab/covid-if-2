@@ -99,7 +99,8 @@ def _violin_plot(well_table, save_path, score_or_ratio, control_intensity, norma
         col_name = "ratio_score"
         plot_table[col_name] = (plot_table["serum_median"] / plot_table["spike_median"]) / normalization_ratio_wt
 
-    sns.violinplot(data=plot_table, x="protein", y=col_name)
+    pd.options.mode.use_inf_as_na = True
+    sns.violinplot(data=plot_table.dropna(), x="protein", y=col_name)
     plt.xticks(rotation=90)
     plt.savefig(save_path, bbox_inches="tight")
     plt.close()
@@ -289,7 +290,11 @@ def compute_scores(plate_config):
         site_name = plate_config.to_site_name(os.path.basename(table_folder), None)
         well_name = to_well_name(site_name)
 
-        default_table = pd.read_csv(os.path.join(table_folder, "default.tsv"), sep="\t")
+        try:
+            default_table = pd.read_csv(os.path.join(table_folder, "default.tsv"), sep="\t")
+        except pd.errors.EmptyDataError:
+            qc_failed.append(site_name)
+            continue
         if not quality_control_image(site_name, default_table):
             qc_failed.append(site_name)
             continue

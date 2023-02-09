@@ -70,7 +70,10 @@ def cell_qc_site(plate_config, table_folder, verbose):
     all_patterns = spike_patterns + nc_patterns + untagged_patterns
 
     default_table_path = os.path.join(table_folder, "default.tsv")
-    default_table = pd.read_csv(default_table_path, sep="\t")
+    try:
+        default_table = pd.read_csv(default_table_path, sep="\t")
+    except pd.errors.EmptyDataError:
+        return
 
     cell_table = pd.read_csv(os.path.join(table_folder, "statistics_cell-segmentation.tsv"), sep="\t")
     assert (default_table["label_id"] == cell_table["label_id"]).all()

@@ -65,7 +65,10 @@ def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path, 
     with zarr.open(seg_path, "r") as f:
         seg = f["s0"][:]
 
-    cell_table = pd.read_csv(table_path, sep="\t")
+    try:
+        cell_table = pd.read_csv(table_path, sep="\t")
+    except pd.errors.EmptyDataError:
+        return
 
     patch_shape = (152, 152)
 
@@ -180,7 +183,10 @@ def analyze_classification(folder_name, plate_config):
         well_name = to_well_name(site_name)
 
         table_path = os.path.join(table_folder, "default.tsv")
-        table = pd.read_csv(table_path, sep="\t")
+        try:
+            table = pd.read_csv(table_path, sep="\t")
+        except pd.errors.EmptyDataError:
+            return
 
         predicted_classes, counts = np.unique(table["prediction"].values, return_counts=True)
         valid_predictions = np.isin(predicted_classes, CLASSES)
