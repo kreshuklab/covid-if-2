@@ -1,0 +1,9 @@
+#! /bin/bash
+
+#SBATCH -A kreshuk
+#SBATCH -N 1
+#SBATCH -c 8
+#SBATCH --mem 64G
+#SBATCH -t 5760
+
+./process_plate_cpu.sh $1

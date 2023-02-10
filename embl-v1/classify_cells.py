@@ -39,24 +39,23 @@ FILTER_FUNCTIONS = {"no_filter": no_filter, "training_plate_filter": training_pl
 
 
 def load_model(checkpoint):
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = resnet34(num_classes=len(CLASSES))
-    model_state = torch.load(os.path.join(checkpoint, "best_model.pt"))
+    model_state = torch.load(os.path.join(checkpoint, "best_model.pt"), map_location=device)
+    model.to(device)
     model.load_state_dict(model_state)
     model.eval()
-    model.to(device)
     with_mask = "with_mask" in checkpoint
     print("Run classification with model from", CHECKPOINT)
     if with_mask:
         print("Run classification WITH MASK")
     else:
         print("Run classification WITHOUT MASK")
-    return model, with_mask
+    return model, with_mask, device
 
 
-def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path, with_mask):
+def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path, with_mask, device):
     eps = 1e-7
-    device = torch.device("cuda")
 
     with zarr.open(marker_path, "r") as f:
         markers = f["s0"][:]
@@ -136,7 +135,7 @@ def set_to_non_classified(table_path):
 
 def classify_cells(folder_name, filter_function):
     ds_folder = os.path.join(OUTPUT_ROOT, folder_name)
-    model, with_mask = load_model(CHECKPOINT)
+    model, with_mask, device = load_model(CHECKPOINT)
 
     marker_paths = glob(os.path.join(ds_folder, "images", "ome-zarr", "*marker*"))
     marker_paths.sort()
@@ -167,7 +166,7 @@ def classify_cells(folder_name, filter_function):
             set_to_non_classified(table_path)
             continue
 
-        classify_cells_image(model, mp, nup, cp, table_path, with_mask)
+        classify_cells_image(model, mp, nup, cp, table_path, with_mask, device)
 
 
 def analyze_classification(folder_name, plate_config):
