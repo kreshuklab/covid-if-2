@@ -5,5 +5,8 @@
 #SBATCH -c 8
 #SBATCH --mem 64G
 #SBATCH -t 4320
+#SBATCH -p gpu-el8
+#SBATCH -C gpu=2080Ti
+#SBATCH --gres=gpu:1
 
-./process_plate_cpu.sh $1
+./process_plate.sh $1 0

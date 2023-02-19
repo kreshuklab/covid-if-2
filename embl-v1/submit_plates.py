@@ -1,4 +1,3 @@
-import json
 import os
 import time
 
@@ -7,28 +6,34 @@ from pathlib import Path
 from subprocess import run
 
 
-PROCESSED_FILE = "./processed_final_plates.json"
-
-
-def submit_plates(config_root):
+def get_plate_configs(config_root):
     configs = glob(os.path.join(config_root, "*.json"))
+    n_configs = len(configs)
     plate_names = [Path(conf).stem for conf in configs]
-    with open(PROCESSED_FILE) as f:
-        processed_plates = json.load(f)
-    left_to_process = list(set(plate_names) - set(processed_plates))
+    plate_names_lower = [name.lower() for name in plate_names]
+    processed_plates = os.listdir("./analysis_results")
+    configs = list(set(plate_names_lower) - set(processed_plates))
+    configs = [plate_names[plate_names_lower.index(name)] for name in configs]
+    print(len(configs), "/", n_configs, "plates still need to be processed")
+    return configs
 
-    print("Submitting jobs for", len(left_to_process), "plates")
-    for plate in left_to_process:
+
+def submit_plates(config_root, use_gpu):
+    configs = get_plate_configs(config_root)
+    print("Submitting jobs for", len(configs), "plates")
+    template_file = "plate_job_template_gpu.batch" if use_gpu else "plate_job_template.batch"
+    for plate in configs:
         print("Submit", plate)
         config_path = f"{config_root}/{plate}.json"
         assert os.path.exists(config_path), config_path
-        run(["sbatch", "plate_job_template.batch", config_path])
-        time.sleep(1)
+        run(["sbatch", template_file, config_path])
+        time.sleep(2)
 
 
 def main():
-    # submit_plates("./plate_configs/FINAL_DATASETS")
-    submit_plates("./plate_configs/FINAL_DATASETS_mAB")
+    use_gpu = True
+    submit_plates("./plate_configs/FINAL_DATASETS", use_gpu)
+    # submit_plates("./plate_configs/FINAL_DATASETS_mAB", use_gpu)
 
 
 if __name__ == "__main__":

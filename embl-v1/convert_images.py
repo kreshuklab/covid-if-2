@@ -50,7 +50,7 @@ def convert_images(in_folder, ds_folder, pos_to_pattern, channel_order):
         image_data = read_czi(image_path, channel_order)
         for channel, channel_name in channel_order.items():
             source_name = f"{channel_name}_{pos}"
-            tmp_folder = f"tmps/tmp_{source_name}"
+            tmp_folder = f"tmps/{ds_name}/tmp_{source_name}"
             mobie.add_image(image_data[channel], None, out_root, ds_name, source_name,
                             resolution=resolution, view={}, tmp_folder=tmp_folder,
                             scale_factors=scale_factors, chunks=chunks,

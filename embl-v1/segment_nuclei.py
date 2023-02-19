@@ -53,7 +53,7 @@ def run_nucleus_segmentation(ds_name):
         if model is None:
             model = StarDist2D.from_pretrained("2D_versatile_fluo")
         seg = segment_nuclei(model, in_path)
-        tmp_folder = f"tmps/{source_name}"
+        tmp_folder = f"tmps/{ds_name}/{source_name}"
         mobie.add_segmentation(seg, None, OUTPUT_ROOT, ds_name, source_name,
                                resolution=resolution, view={}, tmp_folder=tmp_folder,
                                scale_factors=scale_factors, chunks=chunks,

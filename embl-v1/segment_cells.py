@@ -72,7 +72,7 @@ def run_cell_segmentation(ds_name):
             pp = bioimageio.core.create_prediction_pipeline(model)
         seg = segment_cells(pp, serum, nuc)
 
-        tmp_folder = f"tmps/{source_name}"
+        tmp_folder = f"tmps/{ds_name}/{source_name}"
         mobie.add_segmentation(seg, None, OUTPUT_ROOT, ds_name, source_name,
                                resolution=resolution, view={}, tmp_folder=tmp_folder,
                                scale_factors=scale_factors, chunks=chunks,
