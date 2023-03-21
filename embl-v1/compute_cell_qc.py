@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from tqdm import tqdm
-from plate_utils import read_plate_config, OUTPUT_ROOT
+from plate_utils import read_plate_config, write_plate_config, OUTPUT_ROOT
 
 
 def _qc_cell_absolute(qc_input, qc_result, patterns, column, threshold, reason,
@@ -161,7 +161,14 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
     plate_config = read_plate_config(args.config_file)
+
+    if plate_config.processed["compute_cell_qc"]:
+        return
+
     compute_cell_qc(plate_config, args.verbose)
+
+    plate_config.processed["compute_cell_qc"] = True
+    write_plate_config(args.config_file, plate_config)
 
 
 if __name__ == "__main__":

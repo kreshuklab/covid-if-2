@@ -9,7 +9,7 @@ import pandas as pd
 from elf.io import open_file
 from tqdm import tqdm
 
-from plate_utils import read_plate_config, OUTPUT_ROOT
+from plate_utils import read_plate_config, write_plate_config, OUTPUT_ROOT
 
 
 def median_absolute_deviation(x):
@@ -107,10 +107,8 @@ def stats_impl(position, grid_layout, ds_folder, sources):
     return bg_stats
 
 
-def compute_segmentation_statistics(metadata, ds_folder, site_table, channel_order, force):
+def compute_segmentation_statistics(metadata, ds_folder, site_table, channel_order):
     site_stat_table = os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv")
-    if os.path.exists(site_stat_table) and not force:
-        return
 
     # get the grid layout to find all the positions for this source
     view = metadata["views"]["segmentations"]
@@ -144,14 +142,14 @@ def compute_segmentation_statistics(metadata, ds_folder, site_table, channel_ord
     bg_stats.to_csv(site_stat_table, sep="\t", index=False)
 
 
-def compute_statistics(ds_folder, channel_order, force=False):
+def compute_statistics(ds_folder, channel_order):
     metadata = mobie.metadata.read_dataset_metadata(ds_folder)
 
     site_table_folder = os.path.join(ds_folder, "tables", "sites")
     site_table = pd.read_csv(os.path.join(site_table_folder, "default.tsv"), sep="\t")
 
     # compute the per cell intensities
-    compute_segmentation_statistics(metadata, ds_folder, site_table, channel_order, force)
+    compute_segmentation_statistics(metadata, ds_folder, site_table, channel_order)
 
 
 def main():
@@ -159,10 +157,16 @@ def main():
     parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
     args = parser.parse_args()
     plate_config = read_plate_config(args.config_file)
-    folder_name = os.path.basename(plate_config.folder).lower()
 
+    if plate_config.processed["compute_intensities"]:
+        return
+
+    folder_name = os.path.basename(plate_config.folder).lower()
     ds_folder = os.path.join(OUTPUT_ROOT, folder_name)
-    compute_statistics(ds_folder, plate_config.channel_order, force=True)
+    compute_statistics(ds_folder, plate_config.channel_order)
+
+    plate_config.processed["compute_intensities"] = True
+    write_plate_config(args.config_file, plate_config)
 
 
 if __name__ == "__main__":

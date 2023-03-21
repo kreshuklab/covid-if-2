@@ -1,0 +1,38 @@
+{
+    "channel_colors": {
+        "marker": "red",
+        "nuclei": "blue",
+        "serum": "green",
+        "spike": "red"
+    },
+    "channel_order": {
+        "0": "nuclei",
+        "1": "serum",
+        "2": "marker",
+        "3": "spike"
+    },
+    "folder": "230207_mAB_Casiriv_Imdev_titration_alpha-H2A",
+    "nested": false,
+    "nucleocapsid_patterns": [
+        "3xNLS-mScarlet"
+    ],
+    "prediction_filter_name": "no_filter",
+    "processed": {
+        "classify_cells": true,
+        "compute_cell_qc": true,
+        "compute_intensities": true,
+        "compute_scores": false,
+        "convert_images": true,
+        "segment_cells": true,
+        "segment_nuclei": true
+    },
+    "spike_patterns": [
+        "LCK-mScarlet",
+        "mScarlet-H2A",
+        "mScarlet-Giantin"
+    ],
+    "to_site_name": "to_site_name_new",
+    "untagged_patterns": [
+        "mScarlet-Lamin"
+    ]
+}

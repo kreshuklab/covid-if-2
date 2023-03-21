@@ -13,7 +13,7 @@ from scipy.ndimage.morphology import binary_dilation
 from tqdm import tqdm
 from xarray import DataArray
 
-from plate_utils import to_well_name, to_position, read_plate_config, OUTPUT_ROOT
+from plate_utils import to_well_name, to_position, read_plate_config, write_plate_config, OUTPUT_ROOT
 
 
 def segment_cells(model, serum_path, nucleus_path):
@@ -120,9 +120,16 @@ def main():
     parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
     args = parser.parse_args()
     plate_config = read_plate_config(args.config_file)
+
+    if plate_config.processed["segment_cells"]:
+        return
+
     folder_name = os.path.basename(plate_config.folder).lower()
     run_cell_segmentation(folder_name)
     add_grid_view(folder_name, plate_config.channel_order, plate_config.channel_colors, plate_config.to_site_name)
+
+    plate_config.processed["segment_cells"] = True
+    write_plate_config(args.config_file, plate_config)
 
 
 if __name__ == "__main__":

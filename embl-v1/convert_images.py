@@ -8,20 +8,25 @@ import numpy as np
 import pandas as pd
 
 from czifile import CziFile
+from czifile.czifile import SegmentNotFoundError
 from tqdm import tqdm
 
-from plate_utils import to_well_name, read_plate_config, INPUT_ROOT, OUTPUT_ROOT
+from plate_utils import to_well_name, read_plate_config, write_plate_config, INPUT_ROOT, OUTPUT_ROOT
 
 
 def read_czi(path, channel_order):
     data = {}
     samples = []
-    with CziFile(path, "r") as f:
-        for block in f.subblocks():
-            sample = [d.start for d in block.dimension_entries if d.dimension == "S"][0]
-            channel = [d.start for d in block.dimension_entries if d.dimension == "C"][0]
-            samples.append(sample)
-            data[channel] = block.data().squeeze()
+    try:
+        with CziFile(path, "r") as f:
+            for block in f.subblocks():
+                sample = [d.start for d in block.dimension_entries if d.dimension == "S"][0]
+                channel = [d.start for d in block.dimension_entries if d.dimension == "C"][0]
+                samples.append(sample)
+                data[channel] = block.data().squeeze()
+    except (SegmentNotFoundError, ValueError):
+        print("Error for loading", path, "returning empty data")
+        return np.zeros((len(channel_order), 3008, 4096), dtype="<u2")
     assert len(set(samples)) == 1
     assert len(data) == len(channel_order), f"{len(data)}, {channel_order}, {path}"
     data = np.concatenate([data[channel][None] for channel in channel_order], axis=0)
@@ -176,10 +181,17 @@ def main():
     parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
     args = parser.parse_args()
     plate_config = read_plate_config(args.config_file)
+
+    if plate_config.processed["convert_images"]:
+        return
+
     if plate_config.nested:
         convert_to_mobie_nested(plate_config)
     else:
         convert_to_mobie(plate_config)
+
+    plate_config.processed["convert_images"] = True
+    write_plate_config(args.config_file, plate_config)
 
 
 if __name__ == "__main__":

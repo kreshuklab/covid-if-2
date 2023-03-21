@@ -1,3 +1,4 @@
+import inspect
 import json
 import string
 
@@ -16,6 +17,10 @@ INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS"
 
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 # OUTPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/mobie-tmp/data"
+
+TASKS = ["convert_images", "segment_nuclei", "segment_cells",
+         "compute_intensities", "classify_cells", "compute_cell_qc",
+         "compute_scores"]
 
 
 def to_site_name(source_name, prefix):
@@ -52,14 +57,28 @@ class PlateConfig:
         self.channel_order = channel_order
         self.channel_colors = plate_config["channel_colors"]
         self.prediction_filter_name = plate_config.get("prediction_filter_name", "no_filter")
-        self.to_site_name = SITE_NAMES[plate_config.get("to_site_name", "to_site_name")]
+        self.to_site_name = SITE_NAMES[plate_config.get("to_site_name", "to_site_name_new")]
         self.spike_patterns = plate_config.get("spike_patterns", None)
         self.nucleocapsid_patterns = plate_config.get("nucleocapsid_patterns", None)
         self.untagged_patterns = plate_config.get("untagged_patterns", None)
 
+        # fill the process status
+        self.processed = {}
+        processed = plate_config.get("processed", {})
+        for task in TASKS:
+            self.processed[task] = processed.get(task, False)
+
 
 def read_plate_config(path):
     return PlateConfig(path)
+
+
+def write_plate_config(path, plate_config):
+    conf = inspect.getmembers(plate_config)
+    conf = {co[0]: co[1] for co in conf if not co[0].startswith("_")}
+    conf = {k: v.__name__ if callable(v) else v for k, v in conf.items()}
+    with open(path, "w") as f:
+        json.dump(conf, f, indent=4, sort_keys=True)
 
 
 def to_well_name(site_name):

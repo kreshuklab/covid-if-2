@@ -1,5 +1,6 @@
 import argparse
 import os
+import warnings
 from glob import glob
 
 import matplotlib.pyplot as plt
@@ -8,7 +9,7 @@ import pandas as pd
 import seaborn as sns
 from scipy.stats.mstats import pearsonr
 
-from plate_utils import read_plate_config, to_well_name, OUTPUT_ROOT
+from plate_utils import read_plate_config, write_plate_config, to_well_name, OUTPUT_ROOT
 
 pd.options.mode.chained_assignment = None
 
@@ -26,18 +27,30 @@ SERUM_OFFSET = 160
 SPIKE_OFFSET = 160
 
 
-def _score_plot(score_table, save_path):
+def _score_plot(score_table, save_folder, save_name):
+    image_folder, table_folder = os.path.join(save_folder, "images"), os.path.join(save_folder, "tables")
+    os.makedirs(image_folder, exist_ok=True), os.makedirs(table_folder, exist_ok=True)
+    image_save_path = os.path.join(image_folder, f"{save_name}.png")
+    table_save_path = os.path.join(table_folder, f"{save_name}.xlsx")
+
     plot_table = score_table[score_table["pattern"] != "Control - Lamin"]
     sns.barplot(data=plot_table, x="pattern", y="score")
     y_max = np.ceil(plot_table["score"].max())
     plt.ylim(1.0, y_max)
     plt.xticks(rotation=90)
-    plt.savefig(save_path, bbox_inches="tight")
+    plt.savefig(image_save_path, bbox_inches="tight")
     plt.close()
 
+    plot_table.to_excel(table_save_path, index=False)
 
-def _ratio_plot(score_table, save_path):
+
+def _ratio_plot(score_table, save_folder, save_name):
     col_name = "normalization_ratio"
+
+    image_folder, table_folder = os.path.join(save_folder, "images"), os.path.join(save_folder, "tables")
+    os.makedirs(image_folder, exist_ok=True), os.makedirs(table_folder, exist_ok=True)
+    image_save_path = os.path.join(image_folder, f"{save_name}.png")
+    table_save_path = os.path.join(table_folder, f"{save_name}.xlsx")
 
     ratio_patterns = list(PATTERN_TO_NAME.values())[:3]
     plot_table = score_table[score_table["pattern"].isin(ratio_patterns)]
@@ -47,8 +60,10 @@ def _ratio_plot(score_table, save_path):
     ax = sns.barplot(data=plot_table, x="pattern", y=col_name)
     ax.bar_label(ax.containers[0])
     plt.xticks(rotation=90)
-    plt.savefig(save_path, bbox_inches="tight")
+    plt.savefig(image_save_path, bbox_inches="tight")
     plt.close()
+
+    plot_table.to_excel(table_save_path, index=False)
 
 
 def _compute_pearson(table, pattern):
@@ -60,7 +75,12 @@ def _compute_pearson(table, pattern):
 
 
 # missing from the sketch: linear fit (I wouldn't add it to avoid clutter)
-def _correlation_plot(well_table, save_path):
+def _correlation_plot(well_table, save_folder, save_name):
+    image_folder, table_folder = os.path.join(save_folder, "images"), os.path.join(save_folder, "tables")
+    os.makedirs(image_folder, exist_ok=True), os.makedirs(table_folder, exist_ok=True)
+    image_save_path = os.path.join(image_folder, f"{save_name}.png")
+    table_save_path = os.path.join(table_folder, f"{save_name}.xlsx")
+
     plot_table = well_table.copy()
     plot_table["prediction"] = plot_table["prediction"].apply(lambda x: PATTERN_TO_NAME[x])
 
@@ -78,11 +98,18 @@ def _correlation_plot(well_table, save_path):
         data=plot_table, x="spike_median", y="serum_median",
         hue="Pearson's R", style="Pearson's R"
     )
-    plt.savefig(save_path, bbox_inches="tight")
+    plt.savefig(image_save_path, bbox_inches="tight")
     plt.close()
 
+    plot_table.to_excel(table_save_path, index=False)
 
-def _violin_plot(well_table, save_path, score_or_ratio, control_intensity, normalization_ratio_wt):
+
+def _violin_plot(well_table, save_folder, save_name, score_or_ratio, control_intensity, normalization_ratio_wt):
+    image_folder, table_folder = os.path.join(save_folder, "images"), os.path.join(save_folder, "tables")
+    os.makedirs(image_folder, exist_ok=True), os.makedirs(table_folder, exist_ok=True)
+    image_save_path = os.path.join(image_folder, f"{save_name}.png")
+    table_save_path = os.path.join(table_folder, f"{save_name}.xlsx")
+
     plot_table = well_table.copy()
     plot_table["prediction"] = plot_table["prediction"].apply(lambda x: PATTERN_TO_NAME[x])
 
@@ -102,18 +129,19 @@ def _violin_plot(well_table, save_path, score_or_ratio, control_intensity, norma
     pd.options.mode.use_inf_as_na = True
     sns.violinplot(data=plot_table.dropna(), x="protein", y=col_name)
     plt.xticks(rotation=90)
-    plt.savefig(save_path, bbox_inches="tight")
+    plt.savefig(image_save_path, bbox_inches="tight")
     plt.close()
+
+    plot_table.to_excel(table_save_path, index=False)
 
 
 def _make_plots(score_table, well_table, res_folder, control_intensity, normalization_ratio_wt):
     well_name = score_table["well"][0]
-    _score_plot(score_table, os.path.join(res_folder, f"{well_name}_scores.png"))
-    _ratio_plot(score_table, os.path.join(res_folder, f"{well_name}_ratios.png"))
-    _correlation_plot(well_table, os.path.join(res_folder, f"{well_name}_correlation.png"))
-    _violin_plot(well_table, os.path.join(res_folder, f"{well_name}_violin_score.png"),
-                 True, control_intensity, normalization_ratio_wt)
-    _violin_plot(well_table, os.path.join(res_folder, f"{well_name}_violin_ratio_score.png"),
+    _score_plot(score_table, res_folder, f"{well_name}_scores")
+    _ratio_plot(score_table, res_folder, f"{well_name}_ratios")
+    _correlation_plot(well_table, res_folder, f"{well_name}_correlation")
+    _violin_plot(well_table, res_folder, f"{well_name}_violin_score", True, control_intensity, normalization_ratio_wt)
+    _violin_plot(well_table, res_folder, f"{well_name}_violin_ratio_score",
                  False, control_intensity, normalization_ratio_wt)
 
 
@@ -138,8 +166,9 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     qc_passed = well_table["qc_passed"]
     well_table = well_table[qc_passed]
 
+    table_len = len(patterns) + 1
     score_table = {
-        "well": (len(patterns) + 1) * [well_name],
+        "well": table_len * [well_name],
         "pattern": [],
         "number_cells": [],
         "serum_intensity": [],
@@ -176,6 +205,12 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
         return np.median(values)
 
     control_mask = well_table["prediction"].isin(control_patterns)
+    if control_mask.sum() == 0:
+        warnings.warn(f"Did not find any valid control cells in the well {well_name}")
+        score_table.update({k: [np.nan] * table_len for k in score_table.keys() if k != "well"})
+        score_table = pd.DataFrame.from_dict(score_table)
+        score_table = _insert_empty_row(score_table)
+        return score_table
     control_intensity, control_intensity_std = _compute_intensity("serum_median", control_mask)
 
     wt_mask = well_table["prediction"].isin(["mScarlet-Giantin"])
@@ -239,7 +274,11 @@ def quality_control_image(site_name, table):
 
 def check_offsets(ds_folder, qc_failed):
     well_to_bg = {}
-    bg_stat_table = pd.read_csv(os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv"), sep="\t")
+    bg_stat_table = os.path.join(ds_folder, "tables", "sites", "bg_stats.tsv")
+    if not os.path.exists(bg_stat_table):
+        return
+
+    bg_stat_table = pd.read_csv(bg_stat_table, sep="\t")
     for _, row in bg_stat_table.iterrows():
         if row.region_id in qc_failed:
             continue
@@ -340,6 +379,9 @@ def main():
     args = parser.parse_args()
     plate_config = read_plate_config(args.config_file)
     compute_scores(plate_config)
+
+    plate_config.processed["compute_scores"] = True
+    write_plate_config(args.config_file, plate_config)
 
 
 if __name__ == "__main__":

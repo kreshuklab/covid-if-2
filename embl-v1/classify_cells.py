@@ -11,7 +11,7 @@ from skimage.transform import resize
 from tqdm import tqdm
 from torchvision.models.resnet import resnet34
 
-from plate_utils import read_plate_config, to_well_name, CLASSES, OUTPUT_ROOT
+from plate_utils import read_plate_config, write_plate_config, to_well_name, CLASSES, OUTPUT_ROOT
 
 
 CHECKPOINT = os.path.join("/g/kreshuk/pape/Work/my_projects/covid-if-2/classification/checkpoints",
@@ -226,8 +226,16 @@ def main():
     folder_name = os.path.basename(plate_config.folder).lower()
 
     if bool(args.classify):
+        if plate_config.processed["classify_cells"]:
+            print("Cells are already classified")
+            return
+
         filter_function = FILTER_FUNCTIONS[plate_config.prediction_filter_name]
         classify_cells(folder_name, filter_function=filter_function)
+
+        plate_config.processed["classify_cells"] = True
+        write_plate_config(args.config_file, plate_config)
+
     analyze_classification(folder_name, plate_config)
 
 

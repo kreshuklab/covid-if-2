@@ -10,7 +10,7 @@ from csbdeep.utils import normalize
 from stardist.models import StarDist2D
 from tqdm import tqdm
 
-from plate_utils import read_plate_config, OUTPUT_ROOT
+from plate_utils import read_plate_config, write_plate_config, OUTPUT_ROOT
 
 
 def segment_nuclei(model, path):
@@ -66,8 +66,15 @@ def main():
     parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
     args = parser.parse_args()
     plate_config = read_plate_config(args.config_file)
+
+    if plate_config.processed["segment_nuclei"]:
+        return
+
     folder_name = os.path.basename(plate_config.folder).lower()
     run_nucleus_segmentation(folder_name)
+
+    plate_config.processed["segment_nuclei"] = True
+    write_plate_config(args.config_file, plate_config)
 
 
 if __name__ == "__main__":
