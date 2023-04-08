@@ -109,10 +109,13 @@ def cell_qc_site(plate_config, table_folder, verbose):
     qc_result = _qc_cell_absolute(qc_input, qc_result, untagged_patterns, "spike_median", threshold=300, op=np.less,
                                   verbose=verbose, reason="Spike intensity in BG Cell")
 
-    # 3.) Exclude all spike pattern cells that have a spike intensity > 5000:
-    # these are not possible physiologically, and indicate wrong classifications of 3xNLS  as a spike pattern
-    qc_result = _qc_cell_absolute(qc_input, qc_result, spike_patterns, "spike_median", op=np.less, threshold=5000,
-                                  reason="High spike channel intensity")
+    # 3.) Exclude all spike pattern cells that have a spike intensity > 1800:
+    # these are not possible physiologically, and indicate wrong classifications of 3xNLS (ncapsid) as a spike pattern
+    qc_result = _qc_cell_absolute(qc_input, qc_result, spike_patterns, "spike_median", op=np.less, threshold=1800,
+                                  reason="Too high spike channel intensity for spike pattern")
+    # Exclude all ncapsid pattern cells that have a spike intensity < 2000
+    qc_result = _qc_cell_absolute(qc_input, qc_result, nc_patterns, "spike_median", op=np.greater, threshold=2000,
+                                  reason="Too low spike channel intensity for ncapsid pattern")
 
     # 4.) size based thresholding
     qc_result = _qc_cell_absolute(qc_input, qc_result, all_patterns, "size", op=np.greater, threshold=5000,
