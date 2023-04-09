@@ -10,6 +10,7 @@ import seaborn as sns
 from scipy.stats.mstats import pearsonr
 
 from plate_utils import read_plate_config, write_plate_config, to_well_name, OUTPUT_ROOT
+from plate_overview_plot import plate_overview_plot
 
 pd.options.mode.chained_assignment = None
 
@@ -370,7 +371,9 @@ def compute_scores(plate_config):
     print("Analysis results were saved to", res_folder)
     scores.to_excel(save_path, index=False)
 
-    # TODO zip the folder
+    # make the plate overview plot
+    plot_save_path = os.path.join(res_folder, f"{folder_name}.png")
+    plate_overview_plot(scores, save_path=plot_save_path)
 
 
 def main():
