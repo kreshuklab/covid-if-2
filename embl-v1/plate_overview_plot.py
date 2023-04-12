@@ -18,12 +18,17 @@ LETTER_TO_ROW = {letter: i for i, letter in enumerate(ROW_LETTERS)}
 def get_scores(table):
     table = table.dropna()
     well_names = pd.unique(table["well"])
-    spike_scores = {name: table[
-        (table["well"] == name) & (table["pattern"] == "Spike")
-    ]["score"].item() for name in well_names}
-    ncap_scores = {name: table[
-        (table["well"] == name) & (table["pattern"] == "Nucleocapsid - 3xNLS")
-    ]["score"].item() for name in well_names}
+
+    def get_score(name, pattern):
+        row_selector = (table["well"] == name) & (table["pattern"] == pattern)
+        if row_selector.sum() != 1:
+            return 0.0
+        else:
+            return table[row_selector]["score"].item()
+
+    spike_scores = {name: get_score(name, "Spike") for name in well_names}
+    ncap_scores = {name: get_score(name, "Nucleocapsid - 3xNLS") for name in well_names}
+
     return spike_scores, ncap_scores
 
 
@@ -88,7 +93,7 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None)
 
 
 def main():
-    tab = pd.read_excel("./analysis_results/230131_ns_plate_10c1/230131_ns_plate_10c1.xlsx")
+    tab = pd.read_excel("./analysis_results/230131_ns_plate_11c2/230131_ns_plate_11c2.xlsx")
     plate_overview_plot(tab, plate_name="230131_ns_plate_10c1")
 
 
