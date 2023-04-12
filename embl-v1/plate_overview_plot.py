@@ -27,7 +27,7 @@ def get_scores(table):
     return spike_scores, ncap_scores
 
 
-def plate_overview_plot(table, save_path=None, figsize=(14, 8)):
+def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None):
     radius = 0.5
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -59,6 +59,8 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8)):
 
     coll = PatchCollection(patches)
     coll.set_array(np.array(patch_values))
+    coll.set_clim(0.0, 2.6)
+    coll.set_cmap("seismic")
 
     ax.add_collection(coll)
 
@@ -72,7 +74,10 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8)):
     cax = divider.append_axes("right", size="3%", pad=0.1)
     fig.colorbar(coll, cax=cax)
 
-    ax.set_title("Scores in circle: Top=Spike, Bottom=Ncapsid")
+    if plate_name is None:
+        ax.set_title("Scores in circle: Top=Spike, Bottom=Ncapsid")
+    else:
+        ax.set_title(f"Plate: {plate_name}, Scores in circle: Top=Spike, Bottom=Ncapsid")
 
     plt.tight_layout()
     if save_path is None:
@@ -84,7 +89,7 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8)):
 
 def main():
     tab = pd.read_excel("./analysis_results/230131_ns_plate_10c1/230131_ns_plate_10c1.xlsx")
-    plate_overview_plot(tab)
+    plate_overview_plot(tab, plate_name="230131_ns_plate_10c1")
 
 
 if __name__ == "__main__":

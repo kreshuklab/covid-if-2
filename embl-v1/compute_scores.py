@@ -373,7 +373,7 @@ def compute_scores(plate_config):
 
     # make the plate overview plot
     plot_save_path = os.path.join(res_folder, f"{folder_name}.png")
-    plate_overview_plot(scores, save_path=plot_save_path)
+    plate_overview_plot(scores, save_path=plot_save_path, plate_name=folder_name)
 
 
 def main():
