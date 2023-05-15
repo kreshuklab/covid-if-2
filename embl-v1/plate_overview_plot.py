@@ -13,6 +13,11 @@ from plate_utils import to_position
 
 ROW_LETTERS = np.array(list("ABCDEFGH"))
 LETTER_TO_ROW = {letter: i for i, letter in enumerate(ROW_LETTERS)}
+ABBREVIATIONS = {
+    "Wildtype - Giantin": "WT",
+    "Delta - LCK": "Delta",
+    "Omicron BA.1 - H2A": "Om"
+}
 
 
 def get_scores(table, use_spike_average):
@@ -28,11 +33,11 @@ def get_scores(table, use_spike_average):
 
     def get_max_score(name, patterns):
         row_selectors = (table["well"] == name) & table["pattern"].isin(patterns)
-        if row_selectors.sum() != 1:
-            return 0.0, "No Values"
+        if row_selectors.sum() == 0:
+            return 0.0, "NaN"
         rows = table[row_selectors]
         max_row_id = np.argmax(rows["score"].values)
-        return rows.iloc[max_row_id]["score"].item(), rows.iloc[max_row_id]["pattern"].item()
+        return rows.iloc[max_row_id]["score"], ABBREVIATIONS[rows.iloc[max_row_id]["pattern"]]
 
     spike_patterns = ["Wildtype - Giantin", "Delta - LCK", "Omicron BA.1 - H2A"]
     if use_spike_average:
@@ -71,7 +76,7 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None,
         if spike_type is None:
             t = plt.annotate(f"{spike_score:.2f}", center_text, ha="center", va="center")
         else:
-            t = plt.annotate(f"{spike_score:.2f} ({spike_type})", center_text, ha="center", va="center")
+            t = plt.annotate(f"{spike_score:.2f} {spike_type}", center_text, ha="center", va="center")
         t.set_bbox(dict(edgecolor="white", facecolor="white", alpha=0.25))
 
         ncap_score = ncap_scores[well_name]
@@ -113,8 +118,8 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None,
 
 
 def main():
-    tab = pd.read_excel("./analysis_results/230131_ns_plate_11c2/230131_ns_plate_11c2.xlsx")
-    plate_overview_plot(tab, plate_name="230131_ns_plate_10c1")
+    tab = pd.read_excel("./analysis_results/230131_ns_plate_10c1/230131_ns_plate_10c1.xlsx")
+    plate_overview_plot(tab, plate_name="230131_ns_plate_10c1", use_spike_average=False)
 
 
 if __name__ == "__main__":
