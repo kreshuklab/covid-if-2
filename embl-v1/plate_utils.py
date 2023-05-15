@@ -11,9 +11,10 @@ CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Giantin",
 # classes and order for the v4 model
 # CLASSES = ["Giantin", "LCK", "H2A", "3xNLS", "Lamin"]
 
-INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
+# INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
 # INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS"
 # INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS_mAB"
+INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/from_Vibor"
 
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 

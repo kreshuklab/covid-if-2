@@ -187,9 +187,11 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     # Instead of using the precomputed offsets we use the directly measured ones
     # serum_offset, spike_offset, marker_offset = well_bg["serum"], well_bg["spike"], well_bg["marker"]
 
+    marker_correction = plate_config.get("marker_correction", 0.015)
+    spike_correction = plate_config.get("spike_correction", 0.06)
     serum_correction = SERUM_OFFSET +\
-        (well_table.loc[:, "marker_median"] - MARKER_OFFSET) * 0.015 +\
-        (well_table.loc[:, "spike_median"] - SPIKE_OFFSET) * 0.06
+        (well_table.loc[:, "marker_median"] - MARKER_OFFSET) * marker_correction +\
+        (well_table.loc[:, "spike_median"] - SPIKE_OFFSET) * spike_correction
 
     well_table.loc[:, "serum_median"] -= serum_correction
 
