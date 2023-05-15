@@ -15,7 +15,7 @@ ROW_LETTERS = np.array(list("ABCDEFGH"))
 LETTER_TO_ROW = {letter: i for i, letter in enumerate(ROW_LETTERS)}
 
 
-def get_scores(table):
+def get_scores(table, use_spike_average):
     table = table.dropna()
     well_names = pd.unique(table["well"])
 
@@ -26,18 +26,34 @@ def get_scores(table):
         else:
             return table[row_selector]["score"].item()
 
-    spike_scores = {name: get_score(name, "Spike") for name in well_names}
+    def get_max_score(name, patterns):
+        row_selectors = (table["well"] == name) & table["pattern"].isin(patterns)
+        if row_selectors.sum() != 1:
+            return 0.0, "No Values"
+        rows = table[row_selectors]
+        max_row_id = np.argmax(rows["score"].values)
+        return rows.iloc[max_row_id]["score"].item(), rows.iloc[max_row_id]["pattern"].item()
+
+    spike_patterns = ["Wildtype - Giantin", "Delta - LCK", "Omicron BA.1 - H2A"]
+    if use_spike_average:
+        spike_scores = {name: get_score(name, "Spike") for name in well_names}
+        spike_types = {name: None for name in well_names}
+    else:
+        scores_and_types = [get_max_score(name, spike_patterns) for name in well_names]
+        spike_scores = {name: sat[0] for name, sat in zip(well_names, scores_and_types)}
+        spike_types = {name: sat[1] for name, sat in zip(well_names, scores_and_types)}
+
     ncap_scores = {name: get_score(name, "Nucleocapsid - 3xNLS") for name in well_names}
 
-    return spike_scores, ncap_scores
+    return spike_scores, ncap_scores, spike_types
 
 
-def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None):
+def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None, use_spike_average=True):
     radius = 0.5
 
     fig, ax = plt.subplots(figsize=figsize)
 
-    spike_scores, ncap_scores = get_scores(table)
+    spike_scores, ncap_scores, spike_types = get_scores(table, use_spike_average=use_spike_average)
     patches, patch_values = [], []
 
     for well_name, spike_score in spike_scores.items():
@@ -51,7 +67,11 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None)
         patches.append(spike_wedge)
         patch_values.append(spike_score)
         center_text = (center[0], center[1] + 0.25)
-        t = plt.annotate(f"{spike_score:.2f}", center_text, ha="center", va="center")
+        spike_type = spike_types[well_name]
+        if spike_type is None:
+            t = plt.annotate(f"{spike_score:.2f}", center_text, ha="center", va="center")
+        else:
+            t = plt.annotate(f"{spike_score:.2f} ({spike_type})", center_text, ha="center", va="center")
         t.set_bbox(dict(edgecolor="white", facecolor="white", alpha=0.25))
 
         ncap_score = ncap_scores[well_name]

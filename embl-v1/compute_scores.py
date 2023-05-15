@@ -187,8 +187,11 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     # Instead of using the precomputed offsets we use the directly measured ones
     # serum_offset, spike_offset, marker_offset = well_bg["serum"], well_bg["spike"], well_bg["marker"]
 
-    marker_correction = plate_config.get("marker_correction", 0.015)
-    spike_correction = plate_config.get("spike_correction", 0.06)
+    marker_correction = plate_config.marker_correction
+    spike_correction = plate_config.spike_correction
+    print("Using correction factors:")
+    print("Marker:", marker_correction)
+    print("Spike:", spike_correction)
     serum_correction = SERUM_OFFSET +\
         (well_table.loc[:, "marker_median"] - MARKER_OFFSET) * marker_correction +\
         (well_table.loc[:, "spike_median"] - SPIKE_OFFSET) * spike_correction
@@ -373,9 +376,12 @@ def compute_scores(plate_config):
     print("Analysis results were saved to", res_folder)
     scores.to_excel(save_path, index=False)
 
-    # make the plate overview plot
+    # make the plate overview plots
     plot_save_path = os.path.join(res_folder, f"{folder_name}.png")
-    plate_overview_plot(scores, save_path=plot_save_path, plate_name=folder_name)
+    plate_overview_plot(scores, save_path=plot_save_path, plate_name=folder_name, use_spike_average=False)
+
+    plot_save_path = os.path.join(res_folder, f"{folder_name}-average.png")
+    plate_overview_plot(scores, save_path=plot_save_path, plate_name=folder_name, use_spike_average=True)
 
 
 def main():

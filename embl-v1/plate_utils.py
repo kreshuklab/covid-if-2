@@ -12,9 +12,9 @@ CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Giantin",
 # CLASSES = ["Giantin", "LCK", "H2A", "3xNLS", "Lamin"]
 
 # INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
-# INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS"
+INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS"
 # INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS_mAB"
-INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/from_Vibor"
+# INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/from_Vibor"
 
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 
@@ -61,6 +61,8 @@ class PlateConfig:
         self.spike_patterns = plate_config.get("spike_patterns", None)
         self.nucleocapsid_patterns = plate_config.get("nucleocapsid_patterns", None)
         self.untagged_patterns = plate_config.get("untagged_patterns", None)
+        self.marker_correction = plate_config.get("marker_correction", 0.015)
+        self.spike_correction = plate_config.get("spike_correction", 0.06)
 
         # fill the process status
         self.processed = {}
