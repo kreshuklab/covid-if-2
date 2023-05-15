@@ -34,5 +34,6 @@
     "to_site_name": "to_site_name_new",
     "untagged_patterns": [
         "mScarlet-Lamin"
-    ]
+    ],
+    "spike_correction": 0.12
 }
