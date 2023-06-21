@@ -22,11 +22,6 @@ PATTERN_TO_NAME = {
     "mScarlet-Lamin": "Control - Lamin"
 }
 
-# measured offset values for the relevant channels
-MARKER_OFFSET = 110
-SERUM_OFFSET = 160
-SPIKE_OFFSET = 160
-
 
 def _score_plot(score_table, save_folder, save_name):
     image_folder, table_folder = os.path.join(save_folder, "images"), os.path.join(save_folder, "tables")
@@ -192,13 +187,23 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     print("Using correction factors:")
     print("Marker:", marker_correction)
     print("Spike:", spike_correction)
-    serum_correction = SERUM_OFFSET +\
-        (well_table.loc[:, "marker_median"] - MARKER_OFFSET) * marker_correction +\
-        (well_table.loc[:, "spike_median"] - SPIKE_OFFSET) * spike_correction
+    print()
+
+    marker_offset = plate_config.marker_offset
+    serum_offset = plate_config.serum_offset
+    spike_offset = plate_config.spike_offset
+    print("Using channel offsets:")
+    print("Marker:", marker_offset)
+    print("Serum:", serum_offset)
+    print("Spike:", spike_offset)
+
+    serum_correction = serum_offset +\
+        (well_table.loc[:, "marker_median"] - marker_offset) * marker_correction +\
+        (well_table.loc[:, "spike_median"] - spike_offset) * spike_correction
 
     well_table.loc[:, "serum_median"] -= serum_correction
 
-    well_table.loc[:, "spike_median"] -= SPIKE_OFFSET
+    well_table.loc[:, "spike_median"] -= spike_offset
 
     def _compute_intensity(column, mask):
         intensities = well_table[column].values[mask]
@@ -309,18 +314,18 @@ def check_offsets(ds_folder, qc_failed):
         for well in well_to_bg
     }
 
-    # F02 is the control well without serum staining
-    if "F02" in well_to_bg:
-        off_measured_serum = well_to_bg["F02"]["serum"]
-        off_measured_spike = well_to_bg["F02"]["spike"]
-        off_measured_marker = well_to_bg["F02"]["marker"]
+    # # F02 is the control well without serum staining
+    # if "F02" in well_to_bg:
+    #     off_measured_serum = well_to_bg["F02"]["serum"]
+    #     off_measured_spike = well_to_bg["F02"]["spike"]
+    #     off_measured_marker = well_to_bg["F02"]["marker"]
 
-        if np.abs(off_measured_serum - SERUM_OFFSET) > 10:
-            print(f"Measured {off_measured_serum} and pre-defined {SERUM_OFFSET} serum offsets differ for serum.")
-        if np.abs(off_measured_spike - SPIKE_OFFSET) > 10:
-            print(f"Measured {off_measured_spike} and pre-defined {SPIKE_OFFSET} spike offsets differ for spike.")
-        if np.abs(off_measured_marker - MARKER_OFFSET) > 10:
-            print(f"Measured {off_measured_marker} and pre-defined {MARKER_OFFSET} marker offsets differ for spike.")
+    #     if np.abs(off_measured_serum - SERUM_OFFSET) > 10:
+    #         print(f"Measured {off_measured_serum} and pre-defined {SERUM_OFFSET} serum offsets differ for serum.")
+    #     if np.abs(off_measured_spike - SPIKE_OFFSET) > 10:
+    #         print(f"Measured {off_measured_spike} and pre-defined {SPIKE_OFFSET} spike offsets differ for spike.")
+    #     if np.abs(off_measured_marker - MARKER_OFFSET) > 10:
+    #         print(f"Measured {off_measured_marker} and pre-defined {MARKER_OFFSET} marker offsets differ for spike.")
 
 
 def compute_scores(plate_config):

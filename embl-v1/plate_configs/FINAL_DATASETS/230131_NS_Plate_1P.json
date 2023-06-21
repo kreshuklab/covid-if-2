@@ -12,6 +12,7 @@
         "3": "spike"
     },
     "folder": "230111_NS_Plate_1P",
+    "marker_correction": 0.015,
     "nested": false,
     "nucleocapsid_patterns": [
         "3xNLS-mScarlet"
@@ -26,6 +27,7 @@
         "segment_cells": true,
         "segment_nuclei": true
     },
+    "spike_correction": 0.12,
     "spike_patterns": [
         "LCK-mScarlet",
         "mScarlet-H2A",
@@ -34,6 +36,5 @@
     "to_site_name": "to_site_name_new",
     "untagged_patterns": [
         "mScarlet-Lamin"
-    ],
-    "spike_correction": 0.12
+    ]
 }

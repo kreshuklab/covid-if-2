@@ -18,13 +18,13 @@
     ],
     "prediction_filter_name": "no_filter",
     "processed": {
-        "classify_cells": false,
-        "compute_cell_qc": false,
-        "compute_intensities": false,
-        "compute_scores": false,
-        "convert_images": false,
-        "segment_cells": false,
-        "segment_nuclei": false
+        "classify_cells": true,
+        "compute_cell_qc": true,
+        "compute_intensities": true,
+        "compute_scores": true,
+        "convert_images": true,
+        "segment_cells": true,
+        "segment_nuclei": true
     },
     "spike_patterns": [
         "LCK-mScarlet",
@@ -35,6 +35,9 @@
     "untagged_patterns": [
         "mScarlet-Lamin"
     ],
-    "marker_correction": 0.0,
-    "spike_correction": 0.0
+    "marker_correction": 0.026,
+    "marker_offset": 70,
+    "serum_offset": 80,
+    "spike_correction": 0.0,
+    "spike_offset": 115
 }

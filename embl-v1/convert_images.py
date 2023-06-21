@@ -24,8 +24,8 @@ def read_czi(path, channel_order):
                 channel = [d.start for d in block.dimension_entries if d.dimension == "C"][0]
                 samples.append(sample)
                 data[channel] = block.data().squeeze()
-    except (SegmentNotFoundError, ValueError):
-        print("Error for loading", path, "returning empty data")
+    except (SegmentNotFoundError, ValueError) as e:
+        print(f"Error {e} for loading {path} returning empty data")
         return np.zeros((len(channel_order), 3008, 4096), dtype="<u2")
     assert len(set(samples)) == 1
     assert len(data) == len(channel_order), f"{len(data)}, {channel_order}, {path}"

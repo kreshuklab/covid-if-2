@@ -11,23 +11,23 @@
         "2": "marker",
         "3": "spike"
     },
-    "folder": "230131_NS_Plate_10C1",
-    "marker_correction": 0.015,
+    "folder": "neg-controls_K12",
+    "marker_correction": 0.026,
     "nested": false,
     "nucleocapsid_patterns": [
         "3xNLS-mScarlet"
     ],
     "prediction_filter_name": "no_filter",
     "processed": {
-        "classify_cells": true,
-        "compute_cell_qc": true,
-        "compute_intensities": true,
-        "compute_scores": true,
-        "convert_images": true,
-        "segment_cells": true,
-        "segment_nuclei": true
+        "classify_cells": false,
+        "compute_cell_qc": false,
+        "compute_intensities": false,
+        "compute_scores": false,
+        "convert_images": false,
+        "segment_cells": false,
+        "segment_nuclei": false
     },
-    "spike_correction": 0.06,
+    "spike_correction": 0.0,
     "spike_patterns": [
         "LCK-mScarlet",
         "mScarlet-H2A",
@@ -36,5 +36,8 @@
     "to_site_name": "to_site_name_new",
     "untagged_patterns": [
         "mScarlet-Lamin"
-    ]
+    ],
+    "serum_offset": 80,
+    "marker_offset": 70,
+    "spike_offset": 115
 }
