@@ -12,6 +12,8 @@
         "3": "spike"
     },
     "folder": "mAB-testing_rep1",
+    "marker_correction": 0.026,
+    "marker_offset": 70,
     "nested": false,
     "nucleocapsid_patterns": [
         "3xNLS-mScarlet"
@@ -26,6 +28,9 @@
         "segment_cells": true,
         "segment_nuclei": true
     },
+    "serum_offset": 80,
+    "spike_correction": 0.0,
+    "spike_offset": 115,
     "spike_patterns": [
         "LCK-mScarlet",
         "mScarlet-H2A",
@@ -34,10 +39,5 @@
     "to_site_name": "to_site_name_new",
     "untagged_patterns": [
         "mScarlet-Lamin"
-    ],
-    "marker_correction": 0.026,
-    "marker_offset": 70,
-    "serum_offset": 80,
-    "spike_correction": 0.0,
-    "spike_offset": 115
+    ]
 }

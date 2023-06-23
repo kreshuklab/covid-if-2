@@ -68,6 +68,8 @@ def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path, 
         cell_table = pd.read_csv(table_path, sep="\t")
     except pd.errors.EmptyDataError:
         return
+    if len(cell_table) == 0:
+        return
 
     patch_shape = (152, 152)
 
@@ -110,7 +112,7 @@ def classify_cells_image(model, marker_path, nuclei_path, seg_path, table_path, 
         patches.append(patch)
 
     patches = np.array(patches)
-    assert patches.ndim == 4
+    assert patches.ndim == 4, f"{patches.ndim}"
     # can we do this without OOM ?
     # batch_size = 256
     with torch.no_grad():

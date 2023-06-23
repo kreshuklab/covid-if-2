@@ -12,9 +12,9 @@ CLASSES = ["3xNLS-mScarlet", "LCK-mScarlet", "mScarlet-H2A", "mScarlet-Giantin",
 # CLASSES = ["Giantin", "LCK", "H2A", "3xNLS", "Lamin"]
 
 # INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno"
-INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS"
+# INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS"
 # INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/FINAL_DATASETS_mAB"
-# INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/from_Vibor"
+INPUT_ROOT = "/g/kreshuk/data/covid-if-2/from_nuno/from_Vibor"
 
 OUTPUT_ROOT = "/scratch/pape/covid-if-2/data"
 
@@ -53,16 +53,24 @@ class PlateConfig:
             plate_config = json.load(f)
         self.folder = plate_config["folder"]
         self.nested = plate_config["nested"]
+
         channel_order = {int(k): v for k, v in plate_config["channel_order"].items()}
         self.channel_order = channel_order
         self.channel_colors = plate_config["channel_colors"]
+
         self.prediction_filter_name = plate_config.get("prediction_filter_name", "no_filter")
         self.to_site_name = SITE_NAMES[plate_config.get("to_site_name", "to_site_name_new")]
+
         self.spike_patterns = plate_config.get("spike_patterns", None)
         self.nucleocapsid_patterns = plate_config.get("nucleocapsid_patterns", None)
         self.untagged_patterns = plate_config.get("untagged_patterns", None)
+
         self.marker_correction = plate_config.get("marker_correction", 0.015)
         self.spike_correction = plate_config.get("spike_correction", 0.06)
+
+        self.marker_offset = plate_config.get("marker_offset", 110)
+        self.serum_offset = plate_config.get("serum_offset", 160)
+        self.spike_offset = plate_config.get("spike_offset", 160)
 
         # fill the process status
         self.processed = {}

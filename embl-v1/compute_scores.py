@@ -123,7 +123,11 @@ def _violin_plot(well_table, save_folder, save_name, score_or_ratio, control_int
         plot_table[col_name] = (plot_table["serum_median"] / plot_table["spike_median"]) / normalization_ratio_wt
 
     pd.options.mode.use_inf_as_na = True
-    sns.violinplot(data=plot_table.dropna(), x="protein", y=col_name)
+    try:
+        sns.violinplot(data=plot_table.dropna(), x="protein", y=col_name)
+    except ValueError:
+        plt.close()
+        return
     plt.xticks(rotation=90)
     plt.savefig(image_save_path, bbox_inches="tight")
     plt.close()
@@ -206,7 +210,10 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     well_table.loc[:, "spike_median"] -= spike_offset
 
     def _compute_intensity(column, mask):
-        intensities = well_table[column].values[mask]
+        try:
+            intensities = well_table[column].values[mask]
+        except KeyError:
+            intensities = well_table[column].values[mask.values]
         return np.median(intensities), np.std(intensities)
 
     def _compute_intensity_ratio(column_nom, column_denom, mask):
@@ -352,12 +359,15 @@ def compute_scores(plate_config):
         cell_table = pd.read_csv(os.path.join(table_folder, "statistics_cell-segmentation.tsv"), sep="\t")
         assert (default_table["label_id"] == cell_table["label_id"]).all()
 
-        this_table = pd.concat(
-            [
-                default_table[["prediction", "qc_passed"]],
-                cell_table[["serum_median", "spike_median", "marker_median"]],
-            ], axis=1
-        )
+        try:
+            this_table = pd.concat(
+                [
+                    default_table[["prediction", "qc_passed"]],
+                    cell_table[["serum_median", "spike_median", "marker_median"]],
+                ], axis=1
+            )
+        except KeyError:
+            breakpoint()
 
         if well_name in well_to_table:
             this_table = pd.concat([well_to_table[well_name], this_table], axis=0)

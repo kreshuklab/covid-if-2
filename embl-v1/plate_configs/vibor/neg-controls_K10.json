@@ -20,13 +20,13 @@
     ],
     "prediction_filter_name": "no_filter",
     "processed": {
-        "classify_cells": false,
-        "compute_cell_qc": false,
-        "compute_intensities": false,
-        "compute_scores": false,
+        "classify_cells": true,
+        "compute_cell_qc": true,
+        "compute_intensities": true,
+        "compute_scores": true,
         "convert_images": true,
-        "segment_cells": false,
-        "segment_nuclei": false
+        "segment_cells": true,
+        "segment_nuclei": true
     },
     "serum_offset": 80,
     "spike_correction": 0.0,

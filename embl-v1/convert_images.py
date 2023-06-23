@@ -1,6 +1,7 @@
 import argparse
 import os
 from glob import glob
+from warnings import warn
 
 import mobie
 import mobie.htm as htm
@@ -14,7 +15,7 @@ from tqdm import tqdm
 from plate_utils import to_well_name, read_plate_config, write_plate_config, INPUT_ROOT, OUTPUT_ROOT
 
 
-def read_czi(path, channel_order):
+def read_czi(path, channel_order, permissive=False):
     data = {}
     samples = []
     try:
@@ -24,9 +25,14 @@ def read_czi(path, channel_order):
                 channel = [d.start for d in block.dimension_entries if d.dimension == "C"][0]
                 samples.append(sample)
                 data[channel] = block.data().squeeze()
+
     except (SegmentNotFoundError, ValueError) as e:
-        print(f"Error {e} for loading {path} returning empty data")
-        return np.zeros((len(channel_order), 3008, 4096), dtype="<u2")
+        if permissive:
+            warn(f"Error {e} for loading {path} returning empty data")
+            return np.zeros((len(channel_order), 3008, 4096), dtype="<u2")
+        else:
+            raise ValueError(f"Could not read {path} due to error {e}")
+
     assert len(set(samples)) == 1
     assert len(data) == len(channel_order), f"{len(data)}, {channel_order}, {path}"
     data = np.concatenate([data[channel][None] for channel in channel_order], axis=0)

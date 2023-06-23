@@ -81,6 +81,9 @@ def cell_qc_site(plate_config, table_folder, verbose):
     nucleus_table = pd.read_csv(os.path.join(table_folder, "statistics_nucleus-segmentation.tsv"), sep="\t")
     assert (default_table["label_id"] == nucleus_table["label_id"]).all()
 
+    if len(default_table) == 0:
+        return
+
     qc_input = pd.concat(
         [
             default_table[["label_id", "prediction"]],
