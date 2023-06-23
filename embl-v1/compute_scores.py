@@ -410,5 +410,10 @@ def main():
     write_plate_config(args.config_file, plate_config)
 
 
+# TODO new well level QC:
+# - check if there are < 50 cells for given protein
+# - for spike or ncapsid: mark this with an asteriks in the individual plots and
+#   exclude those from the final scores (average spike score, max(spike_scores), ncap_score=0.0*)
+# - for control cells: set the whole well to invalid
 if __name__ == "__main__":
     main()
