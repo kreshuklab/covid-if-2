@@ -11,8 +11,9 @@
         "2": "marker",
         "3": "spike"
     },
-    "folder": "230131_NS_Plate_10C1",
+    "folder": "230131_ns_plate_10c1",
     "marker_correction": 0.015,
+    "marker_offset": 110,
     "nested": false,
     "nucleocapsid_patterns": [
         "3xNLS-mScarlet"
@@ -27,7 +28,9 @@
         "segment_cells": true,
         "segment_nuclei": true
     },
+    "serum_offset": 160,
     "spike_correction": 0.06,
+    "spike_offset": 160,
     "spike_patterns": [
         "LCK-mScarlet",
         "mScarlet-H2A",
