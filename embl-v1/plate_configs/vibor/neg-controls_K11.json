@@ -39,5 +39,6 @@
     "to_site_name": "to_site_name_new",
     "untagged_patterns": [
         "mScarlet-Lamin"
-    ]
+    ],
+    "lamin_spike_threshold": 800 
 }

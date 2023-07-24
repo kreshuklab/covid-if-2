@@ -109,7 +109,9 @@ def cell_qc_site(plate_config, table_folder, verbose):
                                         verbose=verbose, reason="Intensity in spike channel too low.")
 
     # 2.) filter background cells that express spike pattern (have intensity < 300 in spike channel)
-    qc_result = _qc_cell_absolute(qc_input, qc_result, untagged_patterns, "spike_median", threshold=300, op=np.less,
+    lamin_spike_threshold = plate_config.lamin_spike_threshold
+    qc_result = _qc_cell_absolute(qc_input, qc_result, untagged_patterns, "spike_median",
+                                  threshold=lamin_spike_threshold, op=np.less,
                                   verbose=verbose, reason="Spike intensity in BG Cell")
 
     # 3.) Exclude all spike pattern cells that have a spike intensity > 1800:
@@ -128,19 +130,29 @@ def cell_qc_site(plate_config, table_folder, verbose):
 
     # 5.) filter cells based on the marker expressions for each individual pattern,
     # with empirically determined threshold values
-    qc_result = _qc_cell_absolute(qc_input, qc_result, ["LCK-mScarlet"], "marker_median", threshold=200,
+    lck_marker_threshold = plate_config.lck_marker_threshold
+    qc_result = _qc_cell_absolute(qc_input, qc_result, ["LCK-mScarlet"], "marker_median",
+                                  threshold=lck_marker_threshold,
                                   verbose=verbose, reason="Marker intensity LCK")
-    qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-H2A"], "marker_median_nucleus", threshold=450,
+    h2a_marker_threshold = plate_config.h2a_marker_threshold
+    qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-H2A"], "marker_median_nucleus",
+                                  threshold=h2a_marker_threshold,
                                   verbose=verbose, reason="Marker intensity H2A")
     qc_result = _qc_cell_absolute(qc_input, qc_result, ["3xNLS-mScarlet"], "marker_median_nucleus", threshold=500,
                                   verbose=verbose, reason="Marker intensity 3xNLS")
-    qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-Lamin"], "marker_median_nucleus", threshold=250,
+    lamin_marker_threshold = plate_config.lamin_marker_threshold
+    qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-Lamin"], "marker_median_nucleus",
+                                  threshold=lamin_marker_threshold,
                                   verbose=verbose, reason="Marker intensity Lamin")
     # mScarlet-Giantin is not thresholded
 
-    # 6.) filter saturated H2A cells
+    # 6.) filter saturated H2A cells (and 3xNLS if specified)
     qc_result = _qc_cell_absolute(qc_input, qc_result, ["mScarlet-H2A"], "marker_saturation_ratio_nucleus",
                                   threshold=0.15, op=np.less, verbose=verbose, reason="H2A Marker saturation")
+    filter_saturated_nls = plate_config.filter_saturated_nls
+    if filter_saturated_nls:
+        qc_result = _qc_cell_absolute(qc_input, qc_result, ["3xNLS-mScarlet"], "marker_saturation_ratio_nucleus",
+                                      threshold=0.15, op=np.less, verbose=verbose, reason="3xNLS Marker saturation")
 
     if verbose:
         print("In total", qc_result["qc_passed"].values.sum(), "/", len(qc_result), "cells have passed QC.")
@@ -165,10 +177,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-f", "--force", action="store_true")
     args = parser.parse_args()
     plate_config = read_plate_config(args.config_file)
 
-    if plate_config.processed["compute_cell_qc"]:
+    if plate_config.processed["compute_cell_qc"] and not bool(args.force):
         return
 
     compute_cell_qc(plate_config, args.verbose)

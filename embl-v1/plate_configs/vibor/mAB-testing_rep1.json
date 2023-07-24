@@ -39,5 +39,9 @@
     "to_site_name": "to_site_name_new",
     "untagged_patterns": [
         "mScarlet-Lamin"
-    ]
+    ],
+    "lck_marker_threshold": 120,
+    "h2a_marker_threshold": 250,
+    "lamin_marker_threshold": 120,
+    "filter_saturated_nls": true
 }

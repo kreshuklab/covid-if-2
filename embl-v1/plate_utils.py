@@ -72,6 +72,12 @@ class PlateConfig:
         self.serum_offset = plate_config.get("serum_offset", 160)
         self.spike_offset = plate_config.get("spike_offset", 160)
 
+        self.lamin_spike_threshold = plate_config.get("lamin_spike_threshold", 300)
+        self.lck_marker_threshold = plate_config.get("lck_marker_threshold", 200)
+        self.h2a_marker_threshold = plate_config.get("h2a_marker_threshold", 450)
+        self.lamin_marker_threshold = plate_config.get("lamin_marker_threshold", 250)
+        self.filter_saturated_nls = plate_config.get("filter_saturated_nls", False)
+
         # fill the process status
         self.processed = {}
         processed = plate_config.get("processed", {})

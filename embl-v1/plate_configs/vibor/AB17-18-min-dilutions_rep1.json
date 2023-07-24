@@ -11,7 +11,12 @@
         "2": "marker",
         "3": "spike"
     },
+    "filter_saturated_nls": true,
     "folder": "AB17-18-min-dilutions_rep1",
+    "h2a_marker_threshold": 250,
+    "lamin_marker_threshold": 120,
+    "lamin_spike_threshold": 300,
+    "lck_marker_threshold": 120,
     "marker_correction": 0.026,
     "marker_offset": 70,
     "nested": false,
