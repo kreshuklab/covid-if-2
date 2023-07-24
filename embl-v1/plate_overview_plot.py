@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from matplotlib.collections import PatchCollection
-from matplotlib.patches import Wedge
+from matplotlib.patches import Rectangle, Wedge
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from plate_utils import to_position
@@ -71,10 +71,9 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None,
     qc_passed = get_qc_passed(table)
 
     patches, patch_values = [], []
+    qc_patches = []
 
     for well_name, spike_score in spike_scores.items():
-        if not qc_passed[well_name]:
-            continue
 
         well_position = to_position(well_name)
         # map "A01" to (0, 0)
@@ -103,7 +102,12 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None,
         t = plt.annotate(f"{ncap_score:.2f}", center_text, ha="center", va="center")
         t.set_bbox(dict(edgecolor="white", facecolor="white", alpha=0.25))
 
-    coll = PatchCollection(patches)
+        if not qc_passed[well_name]:
+            rect_center = (center[0] - radius, center[1] - radius)
+            qc_rect = Rectangle(rect_center, 2 * radius, 2 * radius, color="red")
+            qc_patches.append(qc_rect)
+
+    coll = PatchCollection(patches + qc_patches)
     coll.set_array(np.array(patch_values))
     coll.set_clim(0.0, 2.6)
     coll.set_cmap("seismic")

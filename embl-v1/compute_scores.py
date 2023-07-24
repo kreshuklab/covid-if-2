@@ -275,10 +275,9 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     score_table = pd.DataFrame.from_dict(score_table)
 
     # don't make plots for a well that didn't pass qc
-    if score_table["min_num_for_qc"].values.all():
-        _make_plots(score_table, well_table, res_folder, control_intensity, normalization_ratio_wt)
-    else:
+    if not score_table["min_num_for_qc"].values.all():
         print("Well", well_name, "did not pass QC")
+    _make_plots(score_table, well_table, res_folder, control_intensity, normalization_ratio_wt)
 
     score_table = _insert_empty_row(score_table)
     return score_table
@@ -399,6 +398,7 @@ def compute_scores(plate_config):
     save_path = os.path.join(res_folder, f"{folder_name}.xlsx")
     print("Analysis results were saved to", res_folder)
     scores.to_excel(save_path, index=False)
+    # scores = pd.read_excel(save_path)
 
     # make the plate overview plots
     plot_save_path = os.path.join(res_folder, f"{folder_name}.png")
