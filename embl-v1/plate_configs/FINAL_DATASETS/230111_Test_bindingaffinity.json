@@ -12,6 +12,8 @@
         "3": "spike"
     },
     "folder": "230111_Test_bindingaffinity",
+    "marker_correction": 0.015,
+    "marker_offset": 110,
     "nested": false,
     "nucleocapsid_patterns": [
         "3xNLS-mScarlet"
@@ -26,6 +28,9 @@
         "segment_cells": true,
         "segment_nuclei": true
     },
+    "serum_offset": 160,
+    "spike_correction": 0.06,
+    "spike_offset": 160,
     "spike_patterns": [
         "LCK-mScarlet",
         "mScarlet-H2A",
