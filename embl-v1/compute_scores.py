@@ -177,6 +177,7 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
         "spike_intensity": [],
         "normalization_ratio": [],
         "ratio_score": [],
+        "min_num_for_qc": [],
     }
 
     # bleedthrough formula:
@@ -241,7 +242,10 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
             score_table["pattern"].append(PATTERN_TO_NAME[name])
 
         pattern_mask = well_table["prediction"].isin(patterns)
-        score_table["number_cells"].append(pattern_mask.sum())
+
+        n_cells_pattern = pattern_mask.sum()
+        score_table["number_cells"].append(n_cells_pattern)
+        score_table["min_num_for_qc"].append(n_cells_pattern > 50)
 
         # median based score measure
         median_intensity, median_intensity_std = _compute_intensity("serum_median", pattern_mask)
@@ -269,7 +273,12 @@ def _scores_and_plots(well_name, well_table, plate_config, res_folder):
     score_table = _stats_for_patterns("spike", spike_patterns, compute_norm_ratio=False, compute_other_ratio=True)
 
     score_table = pd.DataFrame.from_dict(score_table)
-    _make_plots(score_table, well_table, res_folder, control_intensity, normalization_ratio_wt)
+
+    # don't make plots for a well that didn't pass qc
+    if score_table["min_num_for_qc"].values.all():
+        _make_plots(score_table, well_table, res_folder, control_intensity, normalization_ratio_wt)
+    else:
+        print("Well", well_name, "did not pass QC")
 
     score_table = _insert_empty_row(score_table)
     return score_table

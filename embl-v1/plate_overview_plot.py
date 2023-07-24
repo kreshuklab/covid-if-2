@@ -53,20 +53,36 @@ def get_scores(table, use_spike_average):
     return spike_scores, ncap_scores, spike_types
 
 
+def get_qc_passed(table):
+    table = table.dropna()
+    well_names = pd.unique(table["well"])
+    qc_passed = {
+        name: table[table["well"] == name]["min_num_for_qc"].values.all() for name in well_names
+    }
+    return qc_passed
+
+
 def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None, use_spike_average=True):
     radius = 0.5
 
     fig, ax = plt.subplots(figsize=figsize)
 
     spike_scores, ncap_scores, spike_types = get_scores(table, use_spike_average=use_spike_average)
+    qc_passed = get_qc_passed(table)
+
     patches, patch_values = [], []
 
     for well_name, spike_score in spike_scores.items():
+        if not qc_passed[well_name]:
+            continue
+
         well_position = to_position(well_name)
         # map "A01" to (0, 0)
         well_position = (well_position[0] - 1, well_position[1])
         # Map to the matplotlib coordinate space
         center = (well_position[0], 7 - well_position[1])
+
+        # TODO well level QC for min number of cells per pattern
 
         spike_wedge = Wedge(center, radius, 1, 179)
         patches.append(spike_wedge)
