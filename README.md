@@ -1,21 +1,25 @@
-# covid-if-2
+# Immunofluorescence Assay for SARS-CoV-2
 
-## Classification Results
+This repository implements image analysis and quantification for immune response to different SARS-CoV-2 variants.
+The publication describing this work will be available soon.
 
-For confusion matrices see 'results/cm'
-
-Accuracies:
-- v1 (resnet18)
-    - vanilla: 0.9412
-    - augmentations: 0.9592
-
+This work is a follow-up to [this publication](https://onlinelibrary.wiley.com/doi/full/10.1002/bies.202000257).
 
 ## Approach
 
-- Segmentation
-    - first round: run segmentation with pretrained net from covid-if-1
-    - second round: train new network using first results as pseudo-labels
-- Classification
-    - Cut out marker, nucleus staining and object mask
-    - Use first six images per well for training, image 7 for validation, image 8 + 9 for testing
-    - Train a ResNet18 with aughmentations
+The assay contains cells that express the spike proteins of different SARS-CoV-2 variants, the nucleocapsid protein and control cells not expressing any viral proteins.
+
+The immunofluorescence data is analyzed with the following approach:
+- Segmenting nuclei with StarDist.
+- Predicting cell foreground and boundaries with a UNet.
+- Segmenting cells with a seeded watershed based on predictions from the first two steps.
+- Classifying cells into variants / ncapsid / control using a ResNet.
+- Determining the antibody to the different variants based on classification results and per-cell immunofluorescence intensity.
+
+## Installation
+
+TODO
+
+## Usage
+
+TODO
