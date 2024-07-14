@@ -12,13 +12,13 @@
         "3": "spike"
     },
     "filter_saturated_nls": false,
-    "folder": "230131_NS_Plate_4_WIMPF",
-    "h2a_marker_threshold": 450,
-    "lamin_marker_threshold": 250,
-    "lamin_spike_threshold": 300,
-    "lck_marker_threshold": 200,
-    "marker_correction": 0.015,
-    "marker_offset": 110,
+    "folder": "neg-controls_K10_run2",
+    "h2a_marker_threshold": 20,
+    "lamin_marker_threshold": 20,
+    "lamin_spike_threshold": 800,
+    "lck_marker_threshold": 20,
+    "marker_correction": 0.026,
+    "marker_offset": 70,
     "nested": false,
     "nucleocapsid_patterns": [
         "3xNLS-mScarlet"
@@ -33,9 +33,9 @@
         "segment_cells": true,
         "segment_nuclei": true
     },
-    "serum_offset": 160,
-    "spike_correction": 0.06,
-    "spike_offset": 160,
+    "serum_offset": 80,
+    "spike_correction": 0.0,
+    "spike_offset": 115,
     "spike_patterns": [
         "LCK-mScarlet",
         "mScarlet-H2A",

@@ -11,7 +11,14 @@
         "2": "marker",
         "3": "spike"
     },
+    "filter_saturated_nls": false,
     "folder": "230131_NS_Plate_6A",
+    "h2a_marker_threshold": 450,
+    "lamin_marker_threshold": 250,
+    "lamin_spike_threshold": 300,
+    "lck_marker_threshold": 200,
+    "marker_correction": 0.015,
+    "marker_offset": 110,
     "nested": false,
     "nucleocapsid_patterns": [
         "3xNLS-mScarlet"
@@ -26,6 +33,9 @@
         "segment_cells": true,
         "segment_nuclei": true
     },
+    "serum_offset": 160,
+    "spike_correction": 0.06,
+    "spike_offset": 160,
     "spike_patterns": [
         "LCK-mScarlet",
         "mScarlet-H2A",

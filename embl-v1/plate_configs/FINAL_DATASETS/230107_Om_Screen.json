@@ -11,7 +11,12 @@
         "2": "marker",
         "3": "spike"
     },
+    "filter_saturated_nls": false,
     "folder": "230107_Om_Screen",
+    "h2a_marker_threshold": 450,
+    "lamin_marker_threshold": 250,
+    "lamin_spike_threshold": 300,
+    "lck_marker_threshold": 200,
     "marker_correction": 0.015,
     "marker_offset": 110,
     "nested": false,
