@@ -39,7 +39,7 @@ def read_czi(path, channel_order, permissive=False):
     return data
 
 
-def convert_images(in_folder, ds_folder, pos_to_pattern, channel_order):
+def convert_images(in_folder, ds_folder, pos_to_pattern, channel_order, selected_pos=None):
     sources = mobie.metadata.read_dataset_metadata(ds_folder).get("sources", {})
 
     ds_name = os.path.basename(ds_folder)
@@ -55,6 +55,8 @@ def convert_images(in_folder, ds_folder, pos_to_pattern, channel_order):
     for image_path in tqdm(image_files, desc="Convert images"):
         fname = os.path.splitext(os.path.basename(image_path))[0]
         pos = fname.split("_")[-1]
+        if selected_pos is not None and (not any(pos == selected for selected in selected_pos)):
+            continue
         pos_to_pattern[pos] = pattern_name
         if all(f"{channel_name}_{pos}" in sources for channel_name in channel_order.values()):
             continue
@@ -160,7 +162,7 @@ def convert_to_mobie_nested(plate_config):
     mobie.metadata.set_is2d(ds_folder, True)
 
 
-def convert_to_mobie(plate_config):
+def convert_to_mobie(plate_config, selected_pos=None):
     in_folder = os.path.join(INPUT_ROOT, plate_config.folder)
     assert os.path.exists(in_folder), in_folder
 
@@ -172,7 +174,8 @@ def convert_to_mobie(plate_config):
     )
     pos_to_pattern = convert_images(in_folder, ds_folder,
                                     pos_to_pattern={},
-                                    channel_order=plate_config.channel_order)
+                                    channel_order=plate_config.channel_order,
+                                    selected_pos=selected_pos)
 
     site_table, well_table = get_tables(pos_to_pattern, os.path.join(ds_folder, "tables"), plate_config.to_site_name)
     add_grid_view(ds_folder, site_table, well_table,
@@ -185,6 +188,7 @@ def convert_to_mobie(plate_config):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file")  # e.g. "./plate_configs/mix_wt_alpha_control.json"
+    parser.add_argument("--position", default=None, type=str, nargs="+")
     args = parser.parse_args()
     plate_config = read_plate_config(args.config_file)
 
@@ -194,7 +198,7 @@ def main():
     if plate_config.nested:
         convert_to_mobie_nested(plate_config)
     else:
-        convert_to_mobie(plate_config)
+        convert_to_mobie(plate_config, selected_pos=args.position)
 
     plate_config.processed["convert_images"] = True
     write_plate_config(args.config_file, plate_config)

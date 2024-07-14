@@ -3,16 +3,23 @@
 # Arguments:
 # $1 - the plate config file, e.g. plate_configs/markers_new.json
 # $2 - cuda device
+# $3 - selected position (optional)
 
 config_file=$1
 cuda_device=$2
+selected_position=${3:-none}
 
 
 echo "Process plate ${config_file} with device ${cuda_device}"
 
 # activate the default processing env
 source activate torch10
-python convert_images.py ${config_file}
+if [[ ${selected_position} == "none" ]]
+then
+    python convert_images.py ${config_file}
+else
+    python convert_images.py ${config_file} --position ${selected_position}
+fi
 
 # activate the stardist env
 source activate stardist-gpu

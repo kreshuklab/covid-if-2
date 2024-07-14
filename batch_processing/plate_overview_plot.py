@@ -62,7 +62,10 @@ def get_qc_passed(table):
     return qc_passed
 
 
-def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None, use_spike_average=True):
+def plate_overview_plot(
+    table, save_path=None, figsize=(14, 8), plate_name=None,
+    use_spike_average=True, mark_outliers=False,
+):
     radius = 0.5
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -102,7 +105,7 @@ def plate_overview_plot(table, save_path=None, figsize=(14, 8), plate_name=None,
         t = plt.annotate(f"{ncap_score:.2f}", center_text, ha="center", va="center")
         t.set_bbox(dict(edgecolor="white", facecolor="white", alpha=0.25))
 
-        if not qc_passed[well_name]:
+        if mark_outliers and not qc_passed[well_name]:
             rect_center = (center[0] - radius, center[1] - radius)
             qc_rect = Rectangle(rect_center, 2 * radius, 2 * radius, color="red")
             qc_patches.append(qc_rect)
